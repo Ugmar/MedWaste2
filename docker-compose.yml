@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: medwaste-postgres
+    environment:
+      POSTGRES_USER: medwaste_user
+      POSTGRES_PASSWORD: medwaste_password
+      POSTGRES_DB: medwaste_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medwaste_user -d medwaste_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: medwaste-api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://medwaste_user:medwaste_password@postgres:5432/medwaste_db"
+      SECRET_KEY: "your-secret-key-change-in-production"
+      DEBUG: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      sh -c "python init_db.py && 
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:
