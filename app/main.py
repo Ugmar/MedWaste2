@@ -11,7 +11,6 @@ from app.routes import auth, admin, educator, driver, processor, inspector
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Жизненный цикл приложения."""
     print("🚀 MedWaste API starting...")
     yield
     print("🛑 MedWaste API shutting down...")
@@ -24,7 +23,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -33,7 +31,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Роутеры
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(educator.router)

@@ -41,7 +41,6 @@ async def create_batch(
     current_educator: User = Depends(get_current_educator),
     db: AsyncSession = Depends(get_db),
 ):
-    """Создать партию отходов."""
     waste_type = await WasteTypeService.get_by_id(db, batch.waste_type_id)
     if not waste_type:
         raise HTTPException(

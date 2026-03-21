@@ -41,7 +41,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 
 def decode_token(token: str) -> dict | None:
-    """Декодировать JWT токен."""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         return payload
@@ -95,10 +94,10 @@ def generate_qr_code(data: str) -> BytesIO:
 
 
 def get_qr_token_expiration() -> datetime:
-    """Получить время истечения QR токена."""
+
     return datetime.utcnow() + timedelta(days=settings.qr_token_lifetime_days)
 
 
 def is_token_expired(expires_at: datetime) -> bool:
-    """Проверить, истек ли токен."""
+
     return datetime.utcnow() > expires_at

@@ -29,17 +29,10 @@ from app.enums import EventType, WasteStatus, UserRole
 import uuid
 
 
-# ============================================================================
-# Organization Service
-# ============================================================================
-
-
 class OrganizationService:
-    """Сервис для работы с организациями."""
 
     @staticmethod
     async def create(db: AsyncSession, org: OrganizationCreate) -> Organization:
-        """Создать организацию."""
         db_org = Organization(**org.model_dump(), id=uuid.uuid4())
         db.add(db_org)
         await db.commit()
@@ -48,7 +41,6 @@ class OrganizationService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, org_id: UUID) -> Organization | None:
-        """Получить организацию по ID."""
         result = await db.execute(
             select(Organization).where(Organization.id == org_id)
         )
@@ -56,7 +48,6 @@ class OrganizationService:
 
     @staticmethod
     async def get_by_inn(db: AsyncSession, inn: str) -> Organization | None:
-        """Получить организацию по ИНН."""
         result = await db.execute(
             select(Organization).where(Organization.inn == inn)
         )
@@ -64,24 +55,16 @@ class OrganizationService:
 
     @staticmethod
     async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[Organization]:
-        """Получить список организаций."""
         result = await db.execute(
             select(Organization).offset(skip).limit(limit)
         )
         return result.scalars().all()
 
 
-# ============================================================================
-# User Service
-# ============================================================================
-
-
 class UserService:
-    """Сервис для работы с пользователями."""
 
     @staticmethod
     async def create(db: AsyncSession, user: UserCreate) -> User:
-        """Создать пользователя."""
         db_user = User(
             **user.model_dump(exclude={"password"}),
             password_hash=hash_password(user.password),
@@ -94,7 +77,6 @@ class UserService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, user_id: str) -> User | None:
-        """Получить пользователя по ID."""
         result = await db.execute(
             select(User).where(User.id == user_id)
         )
@@ -102,7 +84,6 @@ class UserService:
 
     @staticmethod
     async def get_by_username(db: AsyncSession, username: str) -> User | None:
-        """Получить пользователя по имени пользователя."""
         result = await db.execute(
             select(User).where(User.username == username)
         )
@@ -110,7 +91,6 @@ class UserService:
 
     @staticmethod
     async def get_by_email(db: AsyncSession, email: str) -> User | None:
-        """Получить пользователя по email."""
         result = await db.execute(
             select(User).where(User.email == email)
         )
@@ -120,7 +100,6 @@ class UserService:
     async def get_all_by_organization(
         db: AsyncSession, org_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[User]:
-        """Получить список пользователей организации."""
         result = await db.execute(
             select(User)
             .where(User.organization_id == org_id)
@@ -133,7 +112,6 @@ class UserService:
     async def get_drivers(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[User]:
-        """Получить список всех пользователей-водителей."""
         result = await db.execute(
             select(User)
             .where(User.role == UserRole.DRIVER)
@@ -146,7 +124,6 @@ class UserService:
     async def get_drivers_by_organization(
         db: AsyncSession, org_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[User]:
-        """Получить список водителей конкретной организации."""
         result = await db.execute(
             select(User)
             .where(
@@ -159,17 +136,10 @@ class UserService:
         return result.scalars().all()
 
 
-# ============================================================================
-# WasteType Service
-# ============================================================================
-
-
 class WasteTypeService:
-    """Сервис для работы с типами отходов."""
 
     @staticmethod
     async def create(db: AsyncSession, waste_type: WasteTypeCreate) -> WasteType:
-        """Создать тип отходов."""
         db_wt = WasteType(**waste_type.model_dump(), id=uuid.uuid4())
         db.add(db_wt)
         await db.commit()
@@ -178,7 +148,6 @@ class WasteTypeService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, waste_type_id: UUID) -> WasteType | None:
-        """Получить тип отходов по ID."""
         result = await db.execute(
             select(WasteType).where(WasteType.id == waste_type_id)
         )
@@ -186,7 +155,6 @@ class WasteTypeService:
 
     @staticmethod
     async def get_by_code(db: AsyncSession, code: str) -> WasteType | None:
-        """Получить тип отходов по коду."""
         result = await db.execute(
             select(WasteType).where(WasteType.code == code)
         )
@@ -194,20 +162,13 @@ class WasteTypeService:
 
     @staticmethod
     async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[WasteType]:
-        """Получить список типов отходов."""
         result = await db.execute(
             select(WasteType).offset(skip).limit(limit)
         )
         return result.scalars().all()
 
 
-# ============================================================================
-# WasteBatch Service
-# ============================================================================
-
-
 class WasteBatchService:
-    """Сервис для работы с партиями отходов."""
 
     @staticmethod
     async def create(
@@ -216,7 +177,6 @@ class WasteBatchService:
         educator_id: UUID,
         organization_id: UUID,
     ) -> WasteBatch:
-        """Создать партию отходов."""
         db_batch = WasteBatch(
             **batch.model_dump(),
             educator_id=educator_id,
@@ -231,7 +191,6 @@ class WasteBatchService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, batch_id: UUID) -> WasteBatch | None:
-        """Получить партию отходов по ID."""
         result = await db.execute(
             select(WasteBatch)
             .options(
@@ -248,7 +207,6 @@ class WasteBatchService:
     async def get_all_by_educator(
         db: AsyncSession, educator_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[WasteBatch]:
-        """Получить список партий пользователя."""
         result = await db.execute(
             select(WasteBatch)
             .where(WasteBatch.educator_id == educator_id)
@@ -261,7 +219,6 @@ class WasteBatchService:
     async def get_all_by_organization(
         db: AsyncSession, org_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[WasteBatch]:
-        """Получить список партий организации."""
         result = await db.execute(
             select(WasteBatch)
             .options(selectinload(WasteBatch.waste_type))
@@ -275,7 +232,6 @@ class WasteBatchService:
     async def get_all_by_processor_organization(
         db: AsyncSession, processor_org_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[WasteBatch]:
-        """Получить партии, адресованные организации-переработчику."""
         result = await db.execute(
             select(WasteBatch)
             .options(selectinload(WasteBatch.waste_type))
@@ -324,17 +280,10 @@ class WasteBatchService:
         return db_batch
 
 
-# ============================================================================
-# QRToken Service
-# ============================================================================
-
-
 class QRTokenService:
-    """Сервис для работы с QR токенами."""
 
     @staticmethod
     async def create(db: AsyncSession, batch_id: UUID, lifetime_days: int = 7) -> QRToken:
-        """Создать QR токен."""
         existing_result = await db.execute(
             select(QRToken).where(QRToken.batch_id == batch_id)
         )
@@ -358,7 +307,6 @@ class QRTokenService:
 
     @staticmethod
     async def get_by_token(db: AsyncSession, token: str) -> QRToken | None:
-        """Получить QR токен по значению."""
         result = await db.execute(
             select(QRToken).where(QRToken.token == token)
         )
@@ -366,7 +314,6 @@ class QRTokenService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, token_id: UUID) -> QRToken | None:
-        """Получить QR токен по ID."""
         result = await db.execute(
             select(QRToken).where(QRToken.id == token_id)
         )
@@ -374,7 +321,6 @@ class QRTokenService:
 
     @staticmethod
     async def scan_token(db: AsyncSession, token: str) -> QRToken | None:
-        """Отсканировать QR токен."""
         db_token = await QRTokenService.get_by_token(db, token)
         if (
             db_token
@@ -391,7 +337,6 @@ class QRTokenService:
     async def get_all_by_batch(
         db: AsyncSession, batch_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[QRToken]:
-        """Получить список QR токенов партии."""
         result = await db.execute(
             select(QRToken)
             .where(QRToken.batch_id == batch_id)
@@ -401,13 +346,7 @@ class QRTokenService:
         return result.scalars().all()
 
 
-# ============================================================================
-# Event Service
-# ============================================================================
-
-
 class EventService:
-    """Сервис для логирования событий."""
 
     @staticmethod
     async def log_event(
@@ -418,7 +357,6 @@ class EventService:
         object_id: UUID,
         description: str = None,
     ) -> Event:
-        """Залогировать событие."""
         event = Event(
             id=uuid.uuid4(),
             event_type=event_type,
@@ -433,19 +371,12 @@ class EventService:
         return event
 
 
-# ============================================================================
-# Profile Services (Role-Specific)
-# ============================================================================
-
-
 class EducatorProfileService:
-    """Сервис для профиля образователя."""
 
     @staticmethod
     async def create_or_update(
         db: AsyncSession, user_id: UUID, waste_license_number: str = None, educator_call_address: str = None
     ) -> EducatorProfile:
-        """Создать или обновить профиль образователя."""
         result = await db.execute(
             select(EducatorProfile).where(EducatorProfile.user_id == user_id)
         )
@@ -468,7 +399,6 @@ class EducatorProfileService:
 
     @staticmethod
     async def get_by_user_id(db: AsyncSession, user_id: UUID) -> EducatorProfile | None:
-        """Получить профиль образователя по ID пользователя."""
         result = await db.execute(
             select(EducatorProfile).where(EducatorProfile.user_id == user_id)
         )
@@ -476,13 +406,11 @@ class EducatorProfileService:
 
 
 class DriverProfileService:
-    """Сервис для профиля водителя."""
 
     @staticmethod
     async def create_or_update(
         db: AsyncSession, user_id: UUID, vehicle_number: str = None, waste_license_number: str = None
     ) -> DriverProfile:
-        """Создать или обновить профиль водителя."""
         result = await db.execute(
             select(DriverProfile).where(DriverProfile.user_id == user_id)
         )
@@ -505,7 +433,6 @@ class DriverProfileService:
 
     @staticmethod
     async def get_by_user_id(db: AsyncSession, user_id: UUID) -> DriverProfile | None:
-        """Получить профиль водителя по ID пользователя."""
         result = await db.execute(
             select(DriverProfile).where(DriverProfile.user_id == user_id)
         )
@@ -513,13 +440,11 @@ class DriverProfileService:
 
 
 class ProcessorProfileService:
-    """Сервис для профиля переработчика."""
 
     @staticmethod
     async def create_or_update(
         db: AsyncSession, user_id: UUID, processor_license_number: str = None, processor_facility_address: str = None
     ) -> ProcessorProfile:
-        """Создать или обновить профиль переработчика."""
         result = await db.execute(
             select(ProcessorProfile).where(ProcessorProfile.user_id == user_id)
         )
@@ -542,7 +467,6 @@ class ProcessorProfileService:
 
     @staticmethod
     async def get_by_user_id(db: AsyncSession, user_id: str) -> ProcessorProfile | None:
-        """Получить профиль переработчика по ID пользователя."""
         result = await db.execute(
             select(ProcessorProfile).where(ProcessorProfile.user_id == user_id)
         )
@@ -550,7 +474,6 @@ class ProcessorProfileService:
 
 
 class InspectorProfileService:
-    """Сервис для профиля инспектора."""
 
     @staticmethod
     async def create_or_update(
@@ -579,7 +502,6 @@ class InspectorProfileService:
 
     @staticmethod
     async def get_by_user_id(db: AsyncSession, user_id: str) -> InspectorProfile | None:
-        """Получить профиль инспектора по ID пользователя."""
         result = await db.execute(
             select(InspectorProfile).where(InspectorProfile.user_id == user_id)
         )

@@ -22,7 +22,6 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Получить текущего пользователя из токена."""
     token = credentials.credentials
     payload = decode_token(token)
     

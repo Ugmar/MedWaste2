@@ -10,13 +10,10 @@ import uuid
 
 
 def utc_now():
-    """Получить текущее время в UTC."""
     return datetime.utcnow()
 
 
 class Organization(Base):
-    """Организация (учреждение медицины, переработчик и т.д.)."""
-
     __tablename__ = "organizations"
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -24,7 +21,6 @@ class Organization(Base):
     kpp = Column(String(9), nullable=True)
     name = Column(String(255), nullable=False)
 
-    # Отношения
     users = relationship(
         "User", back_populates="organization", cascade="all, delete-orphan"
     )
@@ -41,8 +37,6 @@ class Organization(Base):
 
 
 class User(Base):
-    """Пользователь системы (базовая информация)."""
-
     __tablename__ = "users"
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
