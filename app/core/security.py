@@ -96,9 +96,9 @@ def generate_qr_code(data: str) -> BytesIO:
 
 def get_qr_token_expiration() -> datetime:
     """Получить время истечения QR токена."""
-    return datetime.utcnow() + timedelta(days=settings.qr_token_lifetime_days)
+    return datetime.now(timezone.utc) + timedelta(days=settings.qr_token_lifetime_days)
 
 
 def is_token_expired(expires_at: datetime) -> bool:
-    """Проверить, истёк ли срок действия токена."""
-    return datetime.utcnow() > expires_at
+    """Проверить, истек ли токен."""
+    return datetime.now(timezone.utc) > expires_at

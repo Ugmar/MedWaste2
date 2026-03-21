@@ -1,8 +1,9 @@
 """CRUD операции для работы с данными."""
 
 from uuid import UUID
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
 from app.models.models import (
     Organization,
@@ -25,8 +26,6 @@ from app.schemas.schemas import (
 )
 from app.core.security import hash_password, generate_qr_token, is_token_expired
 from app.enums import EventType, WasteStatus, UserRole
-from datetime import datetime, timedelta
-from sqlalchemy import and_, func
 import uuid
 
 
@@ -308,14 +307,14 @@ class WasteBatchService:
                 )
 
             db_batch.status = new_status
-            db_batch.updated_at = datetime.utcnow()
+            db_batch.updated_at = datetime.now(timezone.utc)
 
             history_entry = BatchStatusHistory(
                 id=uuid.uuid4(),
                 batch_id=db_batch.id,
                 old_status=old_status,
                 new_status=new_status,
-                changed_at=datetime.utcnow(),
+                changed_at=datetime.now(timezone.utc),
                 changed_by_id=user_id,
             )
             db.add(history_entry)
@@ -344,7 +343,7 @@ class QRTokenService:
             raise ValueError("Для этой партии уже выпущен QR токен")
 
         token = generate_qr_token()
-        expires_at = datetime.utcnow() + timedelta(days=lifetime_days)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=lifetime_days)
         db_token = QRToken(
             id=uuid.uuid4(),
             token=token,
@@ -455,7 +454,7 @@ class EducatorProfileService:
         if profile:
             profile.waste_license_number = waste_license_number
             profile.educator_call_address = educator_call_address
-            profile.updated_at = datetime.utcnow()
+            profile.updated_at = datetime.now(timezone.utc)
         else:
             profile = EducatorProfile(
                 user_id=user_id,
@@ -492,7 +491,7 @@ class DriverProfileService:
         if profile:
             profile.vehicle_number = vehicle_number
             profile.waste_license_number = waste_license_number
-            profile.updated_at = datetime.utcnow()
+            profile.updated_at = datetime.now(timezone.utc)
         else:
             profile = DriverProfile(
                 user_id=user_id,
@@ -529,7 +528,7 @@ class ProcessorProfileService:
         if profile:
             profile.processor_license_number = processor_license_number
             profile.processor_facility_address = processor_facility_address
-            profile.updated_at = datetime.utcnow()
+            profile.updated_at = datetime.now(timezone.utc)
         else:
             profile = ProcessorProfile(
                 user_id=user_id,
@@ -566,7 +565,7 @@ class InspectorProfileService:
         if profile:
             profile.inspector_license_number = inspector_license_number
             profile.department = department
-            profile.updated_at = datetime.utcnow()
+            profile.updated_at = datetime.now(timezone.utc)
         else:
             profile = InspectorProfile(
                 user_id=user_id,
@@ -591,6 +590,7 @@ class InspectorProfileService:
 # Aliases for backward compatibility
 # ============================================================================
 
+#TODO Зачем нужны эти переменные
 OrganizationCRUD = OrganizationService
 UserCRUD = UserService
 WasteTypeCRUD = WasteTypeService

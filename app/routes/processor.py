@@ -1,6 +1,7 @@
 """Эндпоинты переработчика."""
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.schemas import (
@@ -37,7 +38,7 @@ async def list_assigned_batches(
 
 @router.get("/batches/{batch_id}", response_model=WasteBatchDetailResponse)
 async def get_batch_details(
-    batch_id: str,
+    batch_id: UUID,
     current_processor: User = Depends(get_current_processor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -52,7 +53,7 @@ async def get_batch_details(
 
 @router.post("/batches/{batch_id}/receive", response_model=dict)
 async def receive_batch(
-    batch_id: str,
+    batch_id: UUID,
     current_processor: User = Depends(get_current_processor),
     db: AsyncSession = Depends(get_db),
 ):

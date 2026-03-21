@@ -1,22 +1,17 @@
 """SQLAlchemy модели для работы с БД."""
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-    ForeignKey,
-    Text,
-    Enum,
-    Numeric,
-    Boolean,
-    Uuid,
-)
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Text, Enum, Numeric, Boolean, Uuid
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
 from app.enums import UserRole, WasteStatus, WasteClass, EventType
 import uuid
+
+
+def utc_now():
+    """Получить текущее время в UTC."""
+    return datetime.now(timezone.utc)
 
 
 class Organization(Base):
@@ -92,9 +87,8 @@ class WasteType(Base):
     name = Column(String(255), nullable=False)
     waste_class = Column(Enum(WasteClass), nullable=False)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Отношения
     batches = relationship("WasteBatch", back_populates="waste_type")
@@ -111,17 +105,15 @@ class WasteBatch(Base):
     unit = Column(String(20), nullable=False)
     educator_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
     driver_id = Column(Uuid, ForeignKey("users.id"), nullable=True)
-    organization_id = Column(Uuid, ForeignKey(
-        "organizations.id"), nullable=False)
+    organization_id = Column(Uuid, ForeignKey("organizations.id"), nullable=False)
     processor_organization_id = Column(
         Uuid, ForeignKey("organizations.id"), nullable=False)
     pickup_address = Column(Text, nullable=False)
     delivery_address = Column(Text, nullable=False)
     status = Column(Enum(WasteStatus),
                     default=WasteStatus.CREATED, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Отношения
     waste_type = relationship("WasteType", back_populates="batches")
@@ -153,7 +145,7 @@ class QRToken(Base):
     batch_id = Column(Uuid, ForeignKey("waste_batches.id"), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     is_valid = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     scanned_count = Column(Integer, default=0)
 
     # Отношения
@@ -169,7 +161,7 @@ class BatchStatusHistory(Base):
     batch_id = Column(Uuid, ForeignKey("waste_batches.id"), nullable=False)
     old_status = Column(Enum(WasteStatus), nullable=True)
     new_status = Column(Enum(WasteStatus), nullable=False)
-    changed_at = Column(DateTime, default=datetime.utcnow)
+    changed_at = Column(DateTime, default=utc_now)
     changed_by_id = Column(Uuid, ForeignKey("users.id"), nullable=True)
 
     # Отношения
@@ -187,7 +179,7 @@ class Event(Base):
     object_type = Column(String(50), nullable=False)
     object_id = Column(Uuid, nullable=False)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # Отношения
     user = relationship("User", back_populates="events")
@@ -206,9 +198,8 @@ class EducatorProfile(Base):
     user_id = Column(Uuid, ForeignKey("users.id"), primary_key=True)
     waste_license_number = Column(String(50), nullable=True)
     educator_call_address = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Отношения
     user = relationship("User", back_populates="educator_profile")
@@ -222,9 +213,8 @@ class DriverProfile(Base):
     user_id = Column(Uuid, ForeignKey("users.id"), primary_key=True)
     vehicle_number = Column(String(20), nullable=True)
     waste_license_number = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Отношения
     user = relationship("User", back_populates="driver_profile")
@@ -238,9 +228,8 @@ class ProcessorProfile(Base):
     user_id = Column(Uuid, ForeignKey("users.id"), primary_key=True)
     processor_license_number = Column(String(50), nullable=True)
     processor_facility_address = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Отношения
     user = relationship("User", back_populates="processor_profile")
@@ -254,9 +243,8 @@ class InspectorProfile(Base):
     user_id = Column(Uuid, ForeignKey("users.id"), primary_key=True)
     inspector_license_number = Column(String(50), nullable=True)
     department = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Отношения
     user = relationship("User", back_populates="inspector_profile")

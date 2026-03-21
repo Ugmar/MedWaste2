@@ -122,7 +122,7 @@ async def list_my_batches(
 
 @router.get("/batches/{batch_id}", response_model=WasteBatchDetailResponse)
 async def get_batch_details(
-    batch_id: str,
+    batch_id: UUID,
     current_educator: User = Depends(get_current_educator),
     db: AsyncSession = Depends(get_db),
 ):
@@ -137,7 +137,7 @@ async def get_batch_details(
 
 @router.post("/batches/{batch_id}/qr-tokens", response_model=QRTokenResponse)
 async def generate_qr_token(
-    batch_id: str,
+    batch_id: UUID,
     qr_request: QRTokenCreate,
     current_educator: User = Depends(get_current_educator),
     db: AsyncSession = Depends(get_db),
@@ -168,7 +168,7 @@ async def generate_qr_token(
 
 @router.get("/batches/{batch_id}/qr-tokens", response_model=List[QRTokenResponse])
 async def list_batch_qr_tokens(
-    batch_id: str,
+    batch_id: UUID,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     current_educator: User = Depends(get_current_educator),
