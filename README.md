@@ -1,451 +1,127 @@
-# 🏥 MedWaste API
+# MedWaste
 
-**Система управления медицинскими отходами** с отслеживанием от образователя (медицинского учреждения) через водителя до переработчика. Обеспечивает полный контроль над жизненным циклом медицинских отходов с помощью QR кодов, логирования событий и разделения ролей пользователей.
+MedWaste - это API-сервис для учета и контроля медицинских отходов класса "Г".
+Система помогает отследить путь партии отходов: от создания в медорганизации до подтверждения приема переработчиком.
 
----
+## Почему такие технологии
 
-## 📋 Содержание
+Выбрал FastAPI, потому что с ним быстро разрабатывать API: есть валидация данных из коробки, удобная документация Swagger и асинхронная работа с запросами.
 
-- [Обоснование технологий](#обоснование-технологий)
-- [Структура проекта](#структура-проекта)
-- [Как запустить](#как-запустить)
-- [API документация](#api-документация)
-- [Примеры запросов](#примеры-запросов)
-- [Архитектура](#архитектура)
-- [Разработка](#разработка)
+PostgreSQL использован как надежная реляционная БД: данные в проекте хорошо ложатся в связанные таблицы (пользователи, организации, партии, события), и с ней удобно поддерживать целостность данных.
 
----
+### Почему такая архитектура
 
-## 🔧 Обоснование технологий
+Выбрана монолитная архитектура (один API-сервис и одна БД):
+1.  потому что MVP
 
-### FastAPI
-- **Почему**: Современный фреймворк с автоматической генерацией OpenAPI документации
-- **Преимущества**: Быстрое написание API, встроенная валидация Pydantic, высокая производительность
+### Почему JWT
 
-### PostgreSQL
-- **Почему**: Реляционная БД для структурированных данных с чёткими отношениями
-- **Преимущества**: ACID транзакции, поддержка Enum типов, удобные миграции через Alembic
+JWT выбран по двум причинам:
+1. Серверу не нужно хранить сессии пользователей: вся информация для проверки доступа приходит вместе с токеном.
+2. В токене можно хранить роль пользователя, поэтому API может сразу понимать, что конкретному пользователю разрешено делать.
 
-### SQLAlchemy ORM
-- **Почему**: Абстрактный слой для работы с БД, независимость от драйверов
-- **Преимущества**: Безопасность от SQL инъекций, удобный синтаксис, отношения между таблицами
+## Быстрый запуск
 
-### Pydantic
-- **Почему**: Валидация данных и сериализация для API
-- **Преимущества**: Автоматическая генерация схем, type hints, удобная работа с JSON
-
-### JWT (JSON Web Tokens)
-- **Почему**: Stateless аутентификация для API
-- **Преимущества**: Масштабируемость, не требует сессии на сервере
-
-### QR коды
-- **Почему**: Удобное отслеживание физических партий отходов
-- **Преимущества**: Легко сканировать, содержит информацию о партии, трудно подделать
-
----
-
-## 📁 Структура проекта
-
-```
-app/
-├── core/                 # Ядро приложения
-│   ├── config.py        # Конфигурация (DATABASE_URL, SECRET_KEY и т.д.)
-│   ├── database.py      # SQLAlchemy engine, session, Base
-│   ├── security.py      # Хеширование паролей, JWT, QR коды
-│   └── dependencies.py  # FastAPI dependencies для авторизации
-│
-├── models/              # SQLAlchemy модели
-│   └── models.py        # User, Organization, WasteBatch, QRToken и т.д.
-│
-├── schemas/             # Pydantic схемы валидации
-│   └── schemas.py       # UserCreate, WasteBatchResponse и т.д.
-│
-├── services/            # Бизнес-логика
-│   └── crud.py          # Services: UserService, WasteBatchService и т.д.
-│
-├── routes/              # API эндпоинты
-│   ├── auth.py          # /auth/login
-│   ├── admin.py         # /admin/organizations, /admin/users
-│   ├── educator.py      # /educator/batches, /educator/qr-tokens
-│   ├── driver.py        # /driver/scan-qr, /driver/batch/{id}/pickup
-│   ├── processor.py     # /processor/assigned-batches
-│   └── inspector.py     # /inspector/waste-batches, /inspector/summary
-│
-├── enums.py             # UserRole, WasteStatus, WasteClass, EventType
-├── main.py              # FastAPI приложение
-└── __init__.py          # Package инициализация
-
-init_db.py              # Скрипт инициализации БД с тестовыми данными
-docker-compose.yml      # Состав контейнеров (API + PostgreSQL)
-Dockerfile              # Образ для API
-requirements.txt        # Python зависимости
-.env.example            # Шаблон конфигурации
-```
-
-### 📚 Описание папок
-
-| Папка | Назначение |
-|-------|-----------|
-| `core/` | Конфигурация, БД, безопасность, dependencies |
-| `models/` | SQLAlchemy модели БД |
-| `schemas/` | Pydantic схемы для валидации API запросов/ответов |
-| `services/` | CRUD операции и бизнес-логика |
-| `routes/` | Эндпоинты API по ролям (auth, admin, educator...) |
-
----
-
-## 🚀 Как запустить
-
-### Способ 1: Docker Compose (Рекомендуется)
-
-**Требования:** Docker 20.10+, Docker Compose 2.0+
+1. Клонировать проект.
+2. Запустить сервисы:
 
 ```bash
-# Клонировать репозиторий
-git clone https://github.com/MedWeb/MedWaste.git
-cd MedWaste
-
-# Запустить контейнеры
-docker-compose up -d
-
-# Проверить статус
-docker-compose ps
-
-# Логи API
-docker-compose logs -f api
+docker-compose up --build
 ```
 
-**Результат:**
-- API: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
-- PostgreSQL: localhost:5432
-- Учетные данные:
-  - Username: `admin`
-  - Password: `admin123`
-
-### Способ 2: Локально (без Docker)
-
-**Требования:** Python 3.10+, PostgreSQL 12+
+3. Проверить, что API поднялось:
 
 ```bash
-# Установить PostgreSQL
-# Ubuntu/Debian
-sudo apt-get install postgresql postgresql-contrib
-
-# Создать БД
-sudo -u postgres psql << EOF
-CREATE DATABASE medwaste_db;
-CREATE USER medwaste_user WITH PASSWORD 'medwaste_password';
-GRANT ALL PRIVILEGES ON DATABASE medwaste_db TO medwaste_user;
-EOF
-
-# Клонировать проект
-git clone https://github.com/MedWeb/MedWaste.git
-cd MedWaste
-
-# Создать виртуальное окружение
-python3 -m venv venv
-source venv/bin/activate
-
-# Установить зависимости
-pip install -r requirements.txt
-
-# Инициализировать БД
-python init_db.py
-
-# Запустить API
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+curl http://localhost:8000/health
 ```
 
----
+4. Открыть документацию:
 
-## 📡 API документация
+- Swagger UI: `http://localhost:8000/docs`
 
-### Структура эндпоинтов
+Тестовые пользователи создаются автоматически скриптом `init_db.py`.
+Пример: `admin / password123`.
 
-| Сервис | Эндпойнт | Метод | Описание |
-|--------|---------|-------|---------|
-| **Auth** | `/auth/login` | POST | Вход и получение токена |
-| **Admin** | `/admin/organizations` | POST, GET | Управление организациями |
-| | `/admin/users` | POST | Создание пользователей |
-| | `/admin/waste-types` | GET, POST | Типы отходов |
-| **Educator** | `/educator/batches` | POST, GET | Создание и просмотр партий |
-| | `/educator/batches/{id}` | GET | Детали партии |
-| | `/educator/batches/{id}/qr-tokens` | POST, GET | Генерирование QR кодов |
-| **Driver** | `/driver/scan-qr` | POST | Сканирование QR кода |
-| | `/driver/batch/{id}/pickup` | POST | Подтверждение получения |
-| **Processor** | `/processor/assigned-batches` | GET | Партии переработчика |
-| | `/processor/batches/{id}/receive` | POST | Приём партии |
-| | `/processor/drivers` | POST, GET | Управление водителями |
-| **Inspector** | `/inspector/waste-batches` | GET | Статистика по партиям |
-| | `/inspector/summary` | GET | Общая сводка |
+## Что умеет система
 
-### Аутентификация
+- Аутентификация пользователей по ролям.
+- Создание и отслеживание партий отходов.
+- Генерация и проверка QR-токенов для водителей.
+- Подтверждение приемки переработчиком.
+- Экспорт CSV-отчетов для образователя и инспектора.
 
-Все защищённые эндпоинты требуют заголовка:
-```
-Authorization: Bearer <access_token>
-```
+## Структура проекта
 
----
+- `app/main.py` - точка входа FastAPI.
+- `app/routes/` - API-роуты по ролям (`auth`, `admin`, `educator`, `driver`, `processor`, `inspector`).
+- `app/models/` - SQLAlchemy-модели таблиц.
+- `app/schemas/` - Pydantic-схемы запросов и ответов.
+- `app/services/` - бизнес-логика и CRUD-сервисы.
+- `app/core/` - конфиг, БД, зависимости и безопасность.
+- `init_db.py` - инициализация БД и тестовых данных.
 
-## 💡 Примеры запросов
+## API: основные эндпоинты
 
-### 1. Вход администратора
+- `POST /auth/login` - вход и получение JWT.
+- `POST /educator/batches` - создать партию.
+- `POST /educator/batches/{batch_id}/qr-tokens` - сгенерировать QR-токен.
+- `POST /driver/scan-qr` - водитель проверяет QR-токен и открывает данные партии.
+- `POST /processor/scan-qr` - переработчик проверяет QR-токен и открывает данные партии при доставке.
+- `POST /driver/batch/{batch_id}/pickup` - водитель подтверждает забор, статус меняется на `in_transit`.
+- `POST /processor/batches/{batch_id}/receive` - переработчик подтверждает приемку, статус меняется на `received`.
+- `GET /inspector/reports/batches/csv` - выгрузка отчета по партиям.
+
+## Примеры запросов
+
+### 1) Логин
 
 ```bash
-curl -X POST "http://localhost:8000/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "admin123"
-  }' | jq
+curl -X POST http://localhost:8000/auth/login \
+	-H "Content-Type: application/json" \
+	-d '{
+		"username": "admin",
+		"password": "password123"
+	}'
 ```
 
-**Ответ:**
+Пример ответа:
+
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+	"access_token": "<JWT_TOKEN>",
+	"token_type": "bearer"
 }
 ```
 
-### 2. Создание организации (админ)
+### 2) Создание партии (роль educator)
 
 ```bash
-TOKEN="<your_token>" # Из результата login
-
-curl -X POST "http://localhost:8000/admin/organizations" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "inn": "7700029760",
-    "kpp": "770301001",
-    "name": "ООО Переработчик Отходов"
-  }' | jq
+curl -X POST http://localhost:8000/educator/batches \
+	-H "Authorization: Bearer <JWT_TOKEN>" \
+	-H "Content-Type: application/json" \
+	-d '{
+		"waste_type_id": "<WASTE_TYPE_ID>",
+		"driver_id": "<DRIVER_ID>",
+		"processor_organization_id": "<PROCESSOR_ORG_ID>",
+		"quantity": 12.5,
+		"unit": "kg",
+		"pickup_address": "Москва, ул. Пример, 1",
+		"delivery_address": "Москва, Промышленный проезд, 10"
+	}'
 ```
 
-### 3. Создание партии отходов (образователь)
+## Архитектура (кратко)
 
-```bash
-curl -X POST "http://localhost:8000/educator/batches" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "waste_type_id": "<waste_type_id>",
-    "quantity": 10.5,
-    "unit": "kg",
-    "pickup_address": "ул. Ленина, д.1, кв.1",
-    "delivery_address": "ул. Промышленная, д.100"
-  }' | jq
-```
+1. Клиент обращается в FastAPI по HTTP.
+2. Роуты валидируют данные через Pydantic-схемы.
+3. Сервисный слой выполняет бизнес-логику (проверки ролей, статусов, ограничений).
+4. Доступ к данным идет через SQLAlchemy (async) в PostgreSQL.
+5. Все ключевые действия фиксируются в журнале событий.
 
-### 4. Генерирование QR кода (образователь)
+Поток работы партии:
 
-```bash
-curl -X POST "http://localhost:8000/educator/batches/<batch_id>/qr-tokens" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "batch_id": "<batch_id>",
-    "lifetime_days": 7
-  }' | jq
-```
+`Образователь -> создает партию -> выпускает QR -> Водитель сканирует/забирает -> Переработчик подтверждает прием -> Инспектор видит отчеты`
 
-### 5. Сканирование QR кода (водитель)
 
-```bash
-curl -X POST "http://localhost:8000/driver/scan-qr" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "token": "<qr_token>"
-  }' | jq
-```
 
-### 6. Статистика (инспектор)
-
-```bash
-curl -X GET "http://localhost:8000/inspector/summary" \
-  -H "Authorization: Bearer $TOKEN" | jq
-```
-
----
-
-## 🏗️ Архитектура
-
-### Диаграмма потока данных
-
-```
-Образователь (Больница/Клиника)
-    ↓
-  (создаёт партию отходов)
-    ↓
-Система MedWaste API
-    ├─→ Генерирует QR код
-    ├─→ Логирует событие
-    └─→ Записывает в БД
-    ↓
-Водитель (Транспортировка)
-    ↓
-  (сканирует QR код)
-    ↓
-API обновляет статус: IN_TRANSIT
-    ├─→ Логирует событие
-    └─→ Уведомляет переработчика
-    ↓
-Переработчик (Утилизация)
-    ↓
-  (получает партию)
-    ↓
-API обновляет статус: RECEIVED
-    ├─→ Логирует событие
-    └─→ Архивирует запись
-    ↓
-Инспектор (Надзор)
-    ↓
-  (просматривает статистику)
-    ↓
-API возвращает аналитику:
-    ├─ Всего партий
-    ├─ По статусам
-    └─ Логистика событий
-```
-
-### Компоненты системы
-
-1. **FastAPI приложение** — REST API с авторизацией
-2. **PostgreSQL** — персистентное хранилище данных
-3. **Auth Layer** — проверка ролей и токенов
-4. **Service Layer** — бизнес-логика CRUD операций
-5. **QR Generator** — создание QR кодов для отслеживания
-6. **Event Logger** — логирование всех операций для аудита
-
-### Статусы партии
-
-```
-CREATED (создана)
-    ↓
-IN_TRANSIT (в пути - водитель подтвердил)
-    ↓
-RECEIVED (принята переработчиком)
-```
-
-### Роли пользователей
-
-| Роль | Доступ |
-|------|--------|
-| **ADMIN** | Управление организациями, типами отходов |
-| **EDUCATOR** | Создание партий, генерирование QR кодов |
-| **DRIVER** | Сканирование QR, подтверждение получения |
-| **PROCESSOR** | Просмотр назначенных партий, подтверждение приёма |
-| **INSPECTOR** | Просмотр статистики, аудит событий |
-
----
-
-## 🔐 Окружение (.env)
-
-Создайте `.env` файл:
-
-```bash
-# Database
-DATABASE_URL=postgresql://medwaste_user:medwaste_password@localhost:5432/medwaste_db
-
-# JWT
-SECRET_KEY=your-secret-key-change-this-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# QR Code
-QR_TOKEN_LIFETIME_DAYS=7
-
-# Server
-DEBUG=False
-APP_TITLE=MedWaste API
-APP_VERSION=1.0.0
-```
-
----
-
-## 🛠️ Разработка
-
-### Форматирование кода
-
-```bash
-# Используется Black + Flake8
-black app/
-flake8 app/
-
-# или через pre-commit hooks
-pre-commit install
-```
-
-### Тесты
-
-```bash
-# Запустить тесты
-pytest tests/ -v
-
-# С покрытием
-pytest tests/ --cov=app
-```
-
-### Структура кода
-
-- **Понятные имена переменных**: `user`, не `u`
-- **Единое форматирование**: 4 пробела, 88 символов в строке
-- **Комментарии только где нужно**: над функциями и сложной логикой
-- **Docstrings**: для модулей, классов и функций
-
----
-
-## 📞 Полезные команды
-
-### Docker
-
-```bash
-# Просмотр логов
-docker-compose logs -f api
-docker-compose logs -f postgres
-
-# Вход в контейнер
-docker-compose exec api bash
-docker-compose exec postgres psql -U medwaste_user -d medwaste_db
-
-# Остановка
-docker-compose down
-docker-compose down -v  # С удалением данных
-
-# Пересборка
-docker-compose build --no-cache
-```
-
-### API
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Swagger UI
-open http://localhost:8000/docs
-
-# ReDoc
-open http://localhost:8000/redoc
-```
-
----
-
-## 📝 Лицензия
-
-MIT
-
----
-
-## 👥 Контакты
-
-- GitHub: [MedWeb/MedWaste](https://github.com/MedWeb/MedWaste)
-- Email: support@medwaste.local
-
----
-
-**Последнее обновление:** Март 2026
-
+ПОДНЯТЬ ЩИТЫ ЗА ИУ7!!!

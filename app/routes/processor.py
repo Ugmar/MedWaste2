@@ -9,14 +9,86 @@ from app.schemas.schemas import (
     WasteBatchDetailResponse,
     UserCreate,
     UserResponse,
+    QRTokenScanRequest,
+    QRTokenScanResponse,
 )
-from app.services.crud import WasteBatchService, UserService, EventService
+from app.services.crud import WasteBatchService, UserService, EventService, QRTokenService
 from app.core.dependencies import get_current_processor
+from app.core.security import is_token_expired
 from app.models.models import User
 from app.enums import UserRole, WasteStatus, EventType
 from typing import List
 
 router = APIRouter(prefix="/processor", tags=["Переработчик"])
+
+
+@router.post("/scan-qr", response_model=QRTokenScanResponse)
+async def scan_qr_code(
+    request: QRTokenScanRequest,
+    current_processor: User = Depends(get_current_processor),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отсканировать QR код партии переработчиком."""
+    qr_token = await QRTokenService.scan_token(db, request.token)
+    if not qr_token:
+        token_record = await QRTokenService.get_by_token(db, request.token)
+        if token_record:
+            if not token_record.is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Токен больше не действителен",
+                )
+            if is_token_expired(token_record.expires_at):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Срок действия токена истек",
+                )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Токен не найден"
+        )
+
+    batch = await WasteBatchService.get_by_id(db, qr_token.batch_id)
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Партия не найдена",
+        )
+
+    if batch.processor_organization_id != current_processor.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Эта партия не назначена вашей организации",
+        )
+
+    if batch.status != WasteStatus.IN_TRANSIT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Сканирование доступно только при доставке: партия должна быть в статусе 'in_transit'",
+        )
+
+    await EventService.log_event(
+        db=db,
+        event_type=EventType.QR_SCANNED,
+        user_id=current_processor.id,
+        object_type="QRToken",
+        object_id=qr_token.id,
+        description=f"QR токен для партии {batch.id} отсканирован переработчиком",
+    )
+
+    return QRTokenScanResponse(
+        message="Данные партии успешно получены",
+        batch_id=batch.id,
+        status=batch.status,
+        waste_type_name=batch.waste_type.name,
+        quantity=batch.quantity,
+        unit=batch.unit,
+        pickup_address=batch.pickup_address,
+        delivery_address=batch.delivery_address,
+        educator_name=batch.educator.full_name,
+        educator_organization_name=batch.organization.name,
+        processor_organization_name=batch.processor_organization.name,
+        access_expires_at=qr_token.expires_at,
+    )
 
 
 @router.get("/assigned-batches", response_model=List[WasteBatchDetailResponse])
