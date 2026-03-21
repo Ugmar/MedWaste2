@@ -584,16 +584,3 @@ class InspectorProfileService:
             select(InspectorProfile).where(InspectorProfile.user_id == user_id)
         )
         return result.scalars().first()
-
-
-# ============================================================================
-# Aliases for backward compatibility
-# ============================================================================
-
-#TODO Зачем нужны эти переменные
-OrganizationCRUD = OrganizationService
-UserCRUD = UserService
-WasteTypeCRUD = WasteTypeService
-WasteBatchCRUD = WasteBatchService
-QRTokenCRUD = QRTokenService
-EventCRUD = EventService
