@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy import Text, Enum, Numeric, Boolean, Uuid
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from datetime import datetime
 from app.core.database import Base
 from app.enums import UserRole, WasteStatus, WasteClass, EventType
 import uuid
@@ -11,7 +11,7 @@ import uuid
 
 def utc_now():
     """Получить текущее время в UTC."""
-    return datetime.now(timezone.utc)
+    return datetime.utcnow()
 
 
 class Organization(Base):

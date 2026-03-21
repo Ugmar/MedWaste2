@@ -1,7 +1,7 @@
 """CRUD операции для работы с данными."""
 
 from uuid import UUID
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
@@ -307,14 +307,14 @@ class WasteBatchService:
                 )
 
             db_batch.status = new_status
-            db_batch.updated_at = datetime.now(timezone.utc)
+            db_batch.updated_at = datetime.utcnow()
 
             history_entry = BatchStatusHistory(
                 id=uuid.uuid4(),
                 batch_id=db_batch.id,
                 old_status=old_status,
                 new_status=new_status,
-                changed_at=datetime.now(timezone.utc),
+                changed_at=datetime.utcnow(),
                 changed_by_id=user_id,
             )
             db.add(history_entry)
@@ -343,7 +343,7 @@ class QRTokenService:
             raise ValueError("Для этой партии уже выпущен QR токен")
 
         token = generate_qr_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=lifetime_days)
+        expires_at = datetime.utcnow() + timedelta(days=lifetime_days)
         db_token = QRToken(
             id=uuid.uuid4(),
             token=token,
@@ -454,7 +454,7 @@ class EducatorProfileService:
         if profile:
             profile.waste_license_number = waste_license_number
             profile.educator_call_address = educator_call_address
-            profile.updated_at = datetime.now(timezone.utc)
+            profile.updated_at = datetime.utcnow()
         else:
             profile = EducatorProfile(
                 user_id=user_id,
@@ -491,7 +491,7 @@ class DriverProfileService:
         if profile:
             profile.vehicle_number = vehicle_number
             profile.waste_license_number = waste_license_number
-            profile.updated_at = datetime.now(timezone.utc)
+            profile.updated_at = datetime.utcnow()
         else:
             profile = DriverProfile(
                 user_id=user_id,
@@ -528,7 +528,7 @@ class ProcessorProfileService:
         if profile:
             profile.processor_license_number = processor_license_number
             profile.processor_facility_address = processor_facility_address
-            profile.updated_at = datetime.now(timezone.utc)
+            profile.updated_at = datetime.utcnow()
         else:
             profile = ProcessorProfile(
                 user_id=user_id,
@@ -565,7 +565,7 @@ class InspectorProfileService:
         if profile:
             profile.inspector_license_number = inspector_license_number
             profile.department = department
-            profile.updated_at = datetime.now(timezone.utc)
+            profile.updated_at = datetime.utcnow()
         else:
             profile = InspectorProfile(
                 user_id=user_id,

@@ -1,7 +1,7 @@
 """Функции безопасности: хеширование, JWT токены, QR коды."""
 
 from passlib.context import CryptContext
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import jwt
 import uuid
 import qrcode
@@ -31,9 +31,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
             to_encode[key] = str(value)
     
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     # Convert expiration datetime to Unix timestamp (seconds since epoch)
     to_encode.update({"exp": int(expire.timestamp())})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
@@ -96,9 +96,9 @@ def generate_qr_code(data: str) -> BytesIO:
 
 def get_qr_token_expiration() -> datetime:
     """Получить время истечения QR токена."""
-    return datetime.now(timezone.utc) + timedelta(days=settings.qr_token_lifetime_days)
+    return datetime.utcnow() + timedelta(days=settings.qr_token_lifetime_days)
 
 
 def is_token_expired(expires_at: datetime) -> bool:
     """Проверить, истек ли токен."""
-    return datetime.now(timezone.utc) > expires_at
+    return datetime.utcnow() > expires_at

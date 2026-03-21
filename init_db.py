@@ -3,7 +3,7 @@
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,8 +26,8 @@ from app.core.security import hash_password, generate_qr_token
 
 
 def get_utc_now() -> datetime:
-    """Получить текущее UTC время без timezone информации для PostgreSQL."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    """Получить текущее UTC время."""
+    return datetime.utcnow()
 
 
 async def init_db():
