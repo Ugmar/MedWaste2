@@ -91,6 +91,7 @@ class ProfileComponent {
             container.querySelector('#profile-username').value = profile.username;
             container.querySelector('#profile-email-input').value = profile.email;
             container.querySelector('#profile-role-input').value = profile.role;
+            container.querySelector('#profile-org').value = profile.organization?.name || '-';
         } catch (error) {
             console.error('Ошибка загрузки профиля:', error);
         }

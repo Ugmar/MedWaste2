@@ -160,6 +160,48 @@ async def receive_batch(
     }
 
 
+@router.post("/batches/{batch_id}/complete", response_model=dict)
+async def complete_batch(
+    batch_id: UUID,
+    current_processor: User = Depends(get_current_processor),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отметить партию как обработанную."""
+    batch = await WasteBatchService.get_by_id(db, batch_id)
+    if not batch or batch.processor_organization_id != current_processor.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Партия не найдена"
+        )
+    if batch.status != WasteStatus.RECEIVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Только принятые партии могут быть помечены как обработанные",
+        )
+    try:
+        updated_batch = await WasteBatchService.update_status(
+            db, batch_id, WasteStatus.PROCESSED, current_processor.id
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    await EventService.log_event(
+        db=db,
+        event_type=EventType.BATCH_STATUS_CHANGED,
+        user_id=current_processor.id,
+        object_type="WasteBatch",
+        object_id=updated_batch.id,
+        description=f"Партия обработана. Статус изменен на {updated_batch.status.value}",
+    )
+    return {
+        "message": "Партия успешно отмечена как обработанная",
+        "batch_id": batch_id,
+        "new_status": updated_batch.status.value,
+        "processed_at": updated_batch.updated_at.isoformat(),
+    }
+
+
 @router.post("/drivers", response_model=UserResponse)
 async def create_driver(
     driver: UserCreate,

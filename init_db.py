@@ -72,6 +72,7 @@ async def init_db():
                         name=org_data["name"],
                     )
                     db.add(org)
+                    await db.flush()  # Flush to get the ID
                     organizations[org_data["name"]] = org
                 else:
                     organizations[org_data["name"]] = existing_org

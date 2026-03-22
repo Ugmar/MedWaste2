@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from app.models.models import (
     Organization,
     User,
@@ -20,8 +21,11 @@ from app.models.models import (
 )
 from app.schemas.schemas import (
     OrganizationCreate,
+    OrganizationUpdate,
     UserCreate,
+    UserUpdate,
     WasteTypeCreate,
+    WasteTypeUpdate,
     WasteBatchCreate,
 )
 from app.core.security import hash_password, generate_qr_token, is_token_expired
@@ -60,6 +64,33 @@ class OrganizationService:
         )
         return result.scalars().all()
 
+    @staticmethod
+    async def update(
+        db: AsyncSession, org_id: UUID, org: OrganizationUpdate
+    ) -> Organization | None:
+        db_org = await OrganizationService.get_by_id(db, org_id)
+        if not db_org:
+            return None
+        updates = org.model_dump(exclude_unset=True)
+        for key, value in updates.items():
+            setattr(db_org, key, value)
+        await db.commit()
+        await db.refresh(db_org)
+        return db_org
+
+    @staticmethod
+    async def delete(db: AsyncSession, org_id: UUID) -> bool:
+        db_org = await OrganizationService.get_by_id(db, org_id)
+        if not db_org:
+            return False
+        await db.delete(db_org)
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise
+        return True
+
 
 class UserService:
 
@@ -76,9 +107,9 @@ class UserService:
         return db_user
 
     @staticmethod
-    async def get_by_id(db: AsyncSession, user_id: str) -> User | None:
+    async def get_by_id(db: AsyncSession, user_id: UUID) -> User | None:
         result = await db.execute(
-            select(User).where(User.id == user_id)
+            select(User).where(User.id == user_id).options(selectinload(User.organization))
         )
         return result.scalars().first()
 
@@ -95,6 +126,19 @@ class UserService:
             select(User).where(User.email == email)
         )
         return result.scalars().first()
+
+    @staticmethod
+    async def get_all(
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        organization_id: UUID | None = None,
+    ) -> list[User]:
+        stmt = select(User).options(selectinload(User.organization))
+        if organization_id is not None:
+            stmt = stmt.where(User.organization_id == organization_id)
+        result = await db.execute(stmt.offset(skip).limit(limit))
+        return result.scalars().all()
 
     @staticmethod
     async def get_all_by_organization(
@@ -135,6 +179,37 @@ class UserService:
         )
         return result.scalars().all()
 
+    @staticmethod
+    async def update(db: AsyncSession, user_id: UUID, user: UserUpdate) -> User | None:
+        db_user = await UserService.get_by_id(db, user_id)
+        if not db_user:
+            return None
+
+        updates = user.model_dump(exclude_unset=True)
+        password = updates.pop("password", None)
+        if password is not None:
+            db_user.password_hash = hash_password(password)
+
+        for key, value in updates.items():
+            setattr(db_user, key, value)
+
+        await db.commit()
+        await db.refresh(db_user)
+        return db_user
+
+    @staticmethod
+    async def delete(db: AsyncSession, user_id: UUID) -> bool:
+        db_user = await UserService.get_by_id(db, user_id)
+        if not db_user:
+            return False
+        await db.delete(db_user)
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise
+        return True
+
 
 class WasteTypeService:
 
@@ -166,6 +241,33 @@ class WasteTypeService:
             select(WasteType).offset(skip).limit(limit)
         )
         return result.scalars().all()
+
+    @staticmethod
+    async def update(
+        db: AsyncSession, waste_type_id: UUID, waste_type: WasteTypeUpdate
+    ) -> WasteType | None:
+        db_wt = await WasteTypeService.get_by_id(db, waste_type_id)
+        if not db_wt:
+            return None
+        updates = waste_type.model_dump(exclude_unset=True)
+        for key, value in updates.items():
+            setattr(db_wt, key, value)
+        await db.commit()
+        await db.refresh(db_wt)
+        return db_wt
+
+    @staticmethod
+    async def delete(db: AsyncSession, waste_type_id: UUID) -> bool:
+        db_wt = await WasteTypeService.get_by_id(db, waste_type_id)
+        if not db_wt:
+            return False
+        await db.delete(db_wt)
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise
+        return True
 
 
 class WasteBatchService:

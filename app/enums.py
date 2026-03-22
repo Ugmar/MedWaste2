@@ -15,6 +15,7 @@ class WasteStatus(str, Enum):
     CREATED = "created"  # Создана
     IN_TRANSIT = "in_transit"  # В пути
     RECEIVED = "received"  # Принята переработчиком
+    PROCESSED = "processed"  # Обработана
 
 
 class WasteClass(str, Enum):

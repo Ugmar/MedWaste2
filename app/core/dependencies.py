@@ -7,11 +7,12 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import decode_token
-from app.services.crud import UserService
 from app.models.models import User
 from app.enums import UserRole
 
@@ -33,7 +34,11 @@ async def get_current_user(
     
     try:
         user_uuid = UUID(str(user_id))
-        user = await UserService.get_by_id(db, user_uuid)
+        # Fetch user with organization relationship
+        result = await db.execute(
+            select(User).where(User.id == user_uuid).options(selectinload(User.organization))
+        )
+        user = result.scalars().first()
     except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

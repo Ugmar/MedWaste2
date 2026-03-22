@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.schemas.schemas import LoginRequest, TokenResponse, UserResponse
 from app.services.crud import UserService
@@ -30,10 +31,4 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/profile", response_model=UserResponse)
 async def get_profile(current_user = Depends(get_current_user)):
     """Получить профиль текущего пользователя."""
-    return UserResponse(
-        id=current_user.id,
-        username=current_user.username,
-        email=current_user.email,
-        full_name=current_user.full_name,
-        role=current_user.role,
-    )
+    return current_user

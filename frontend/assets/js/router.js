@@ -8,6 +8,7 @@ class Router {
             '/batches': BatchesComponent,
             '/organizations': OrganizationsComponent,
             '/profile': ProfileComponent,
+            '/scan-qr': QRScannerComponent,
         };
         window.addEventListener('hashchange', () => this.handleRoute());
         this.handleRoute();
@@ -57,12 +58,23 @@ class Router {
     async viewBatch(batchId) {
         try {
             const batch = await api.getBatch(batchId);
+            const profile = await api.getProfile();
             const appContainer = document.getElementById('app');
+            
+            const isEducator = profile.role === 'EDUCATOR';
+            const canGenerateQR = isEducator && batch.educator_id === profile.id;
+            
+            const qrButtonHTML = canGenerateQR ? `
+                <button class="btn btn-primary" onclick="generateQRCode('${batch.id}')">
+                    <i class="bi bi-qr-code"></i> Генерировать QR код
+                </button>` : '';
+            
             appContainer.innerHTML = `
                 <div class="container-lg mt-4">
                     <div class="row mb-3">
                         <div class="col-12">
                             <button class="btn btn-secondary" onclick="window.location.hash='/batches'">← Назад</button>
+                            ${qrButtonHTML}
                         </div>
                     </div>
                     <div class="card">

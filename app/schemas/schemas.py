@@ -60,6 +60,53 @@ class OrganizationCreate(OrganizationBase):
         return name
 
 
+class OrganizationUpdate(BaseModel):
+    """Схема обновления организации (частичное обновление)."""
+
+    inn: Optional[str] = None
+    kpp: Optional[str] = None
+    name: Optional[str] = None
+
+    @field_validator("inn")
+    @classmethod
+    def validate_inn(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        inn = value.strip()
+        if not inn.isdigit() or len(inn) not in (10, 12):
+            raise ValueError("inn must contain 10 or 12 digits")
+        return inn
+
+    @field_validator("kpp", mode="before")
+    @classmethod
+    def normalize_kpp(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("kpp")
+    @classmethod
+    def validate_kpp(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        kpp = value.strip()
+        if not kpp.isdigit() or len(kpp) != 9:
+            raise ValueError("kpp must contain 9 digits")
+        return kpp
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        name = value.strip()
+        if not name:
+            raise ValueError("name must not be empty")
+        return name
+
+
 class OrganizationResponse(OrganizationBase):
     """Схема ответа организации."""
 
@@ -90,11 +137,23 @@ class UserCreate(UserBase):
     organization_id: Optional[UUID] = None
 
 
+class UserUpdate(BaseModel):
+    """Схема обновления пользователя (частичное обновление)."""
+
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    role: Optional[UserRole] = None
+    password: Optional[str] = None
+    organization_id: Optional[UUID] = None
+
+
 class UserResponse(UserBase):
     """Схема ответа пользователя."""
 
     id: UUID
     organization_id: Optional[UUID] = None
+    organization: Optional['OrganizationResponse'] = None
 
     class Config:
         from_attributes = True
@@ -120,6 +179,15 @@ class WasteTypeCreate(WasteTypeBase):
     pass
 
 
+class WasteTypeUpdate(BaseModel):
+    """Схема обновления типа отходов (частичное обновление)."""
+
+    code: Optional[str] = None
+    name: Optional[str] = None
+    waste_class: Optional[WasteClass] = None
+    description: Optional[str] = None
+
+
 class WasteTypeResponse(WasteTypeBase):
     """Схема ответа типа отходов."""
 
@@ -140,7 +208,7 @@ class WasteBatchBase(BaseModel):
     """Базовая схема партии отходов."""
 
     waste_type_id: UUID
-    driver_id: UUID
+    driver_id: Optional[UUID] = None
     processor_organization_id: UUID
     quantity: Decimal
     unit: str
