@@ -361,6 +361,25 @@ class WasteBatchService:
         return result.scalars().all()
 
     @staticmethod
+    async def get_all_by_driver(
+        db: AsyncSession, driver_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[WasteBatch]:
+        """Получить партии, назначенные водителю."""
+        result = await db.execute(
+            select(WasteBatch)
+            .options(
+                selectinload(WasteBatch.waste_type),
+                selectinload(WasteBatch.educator),
+                selectinload(WasteBatch.organization),
+                selectinload(WasteBatch.processor_organization),
+            )
+            .where(WasteBatch.driver_id == driver_id)
+            .offset(skip)
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    @staticmethod
     async def update_status(
         db: AsyncSession, batch_id: UUID, new_status: WasteStatus, user_id: UUID | None = None
     ) -> WasteBatch | None:

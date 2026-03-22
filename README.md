@@ -93,6 +93,7 @@ Backend доступен на: **http://localhost:8000**
 - `POST /auth/login` - вход и получение JWT.
 - `POST /educator/batches` - создать партию.
 - `POST /educator/batches/{batch_id}/qr-tokens` - сгенерировать QR-токен.
+- `GET /driver/batches` - водитель получает список только своих партий.
 - `POST /driver/scan-qr` - водитель проверяет QR-токен и открывает данные партии.
 - `POST /processor/scan-qr` - переработчик проверяет QR-токен и открывает данные партии при доставке.
 - `POST /driver/batch/{batch_id}/pickup` - водитель подтверждает забор, статус меняется на `in_transit`.

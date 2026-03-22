@@ -3,18 +3,29 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.schemas.schemas import QRTokenScanRequest, QRTokenScanResponse, WasteBatchDetailResponse
 from app.services.crud import QRTokenService, WasteBatchService, EventService
 from app.core.security import is_token_expired
 from app.core.dependencies import get_current_driver
 from app.enums import WasteStatus, EventType
-from app.models.models import User, WasteBatch
+from app.models.models import User
 from typing import List
 
 router = APIRouter(prefix="/driver", tags=["Водитель"])
+
+
+@router.get("/batches", response_model=List[WasteBatchDetailResponse])
+async def list_my_batches(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    current_driver: User = Depends(get_current_driver),
+    db: AsyncSession = Depends(get_db),
+):
+    """Получить партии, назначенные на водителя."""
+    return await WasteBatchService.get_all_by_driver(
+        db, current_driver.id, skip, limit
+    )
 
 
 @router.post("/scan-qr", response_model=QRTokenScanResponse)
@@ -126,27 +137,3 @@ async def confirm_pickup(
         "batch_id": batch_id,
         "new_status": updated_batch.status.value,
     }
-
-
-@router.get("/batches", response_model=List[WasteBatchDetailResponse])
-async def list_assigned_batches(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_driver: User = Depends(get_current_driver),
-    db: AsyncSession = Depends(get_db),
-):
-    """Получить список партий, назначенных водителю."""
-    result = await db.execute(
-        select(WasteBatch)
-        .where(WasteBatch.driver_id == current_driver.id)
-        .options(
-            selectinload(WasteBatch.waste_type),
-            selectinload(WasteBatch.educator),
-            selectinload(WasteBatch.organization),
-            selectinload(WasteBatch.processor_organization),
-        )
-        .offset(skip)
-        .limit(limit)
-    )
-    batches = result.scalars().all()
-    return batches
