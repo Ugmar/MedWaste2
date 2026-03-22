@@ -28,7 +28,12 @@ async def list_all_waste_batches(
     db: AsyncSession = Depends(get_db),
 ):
     """Получить все партии отходов (статистика)."""
-    query = select(WasteBatch)
+    query = select(WasteBatch).options(
+        selectinload(WasteBatch.waste_type),
+        selectinload(WasteBatch.organization),
+        selectinload(WasteBatch.processor_organization),
+        selectinload(WasteBatch.educator),
+    )
     if status_filter:
         query = query.where(WasteBatch.status == status_filter)
     result = await db.execute(query.offset(skip).limit(limit))
@@ -44,31 +49,31 @@ async def get_summary(
     """Получить сводную статистику."""
     total_batches_result = await db.execute(select(func.count(WasteBatch.id)))
     total_batches = total_batches_result.scalar() or 0
-    
+
     created_result = await db.execute(
         select(func.count(WasteBatch.id)).where(
             WasteBatch.status == WasteStatus.CREATED
         )
     )
     created_count = created_result.scalar() or 0
-    
+
     in_transit_result = await db.execute(
         select(func.count(WasteBatch.id)).where(
             WasteBatch.status == WasteStatus.IN_TRANSIT
         )
     )
     in_transit_count = in_transit_result.scalar() or 0
-    
+
     received_result = await db.execute(
         select(func.count(WasteBatch.id)).where(
             WasteBatch.status == WasteStatus.RECEIVED
         )
     )
     received_count = received_result.scalar() or 0
-    
+
     total_events_result = await db.execute(select(func.count(Event.id)))
     total_events = total_events_result.scalar() or 0
-    
+
     return {
         "total_batches": total_batches,
         "batches_created": created_count,
@@ -133,7 +138,8 @@ async def export_batches_csv(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=inspector_batches_report.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=inspector_batches_report.csv"},
     )
 
 
@@ -156,7 +162,8 @@ async def export_events_csv(
 
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["event_id", "event_type", "user_id", "object_type", "object_id", "description", "created_at"])
+    writer.writerow(["event_id", "event_type", "user_id",
+                    "object_type", "object_id", "description", "created_at"])
     for event in events:
         writer.writerow([
             str(event.id),
@@ -172,5 +179,6 @@ async def export_events_csv(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=inspector_events_report.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=inspector_events_report.csv"},
     )

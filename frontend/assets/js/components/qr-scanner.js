@@ -141,12 +141,19 @@ class QRScannerComponent {
             const historyCard = container.querySelector('#history-card');
             historyCard.style.display = 'block';
             const historyDiv = container.querySelector('#scan-history');
-            historyDiv.innerHTML = history.map(scan => `
-                <div class="card mb-2">
+            historyDiv.innerHTML = history.slice().reverse().map((scan, idx) => `
+                <div class="card mb-2" style="cursor: pointer;" onclick="window.location.hash='/batch/${scan.batch_id}'">
                     <div class="card-body">
-                        <p><strong>Партия:</strong> #${scan.batch_id.substring(0, 8)}</p>
-                        <p><strong>Статус:</strong> <span class="badge bg-info">${scan.status}</span></p>
-                        <p><strong>Время:</strong> ${new Date(scan.timestamp).toLocaleString('ru-RU')}</p>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <p class="mb-1"><strong>Партия:</strong> <span style="font-family: monospace;">${scan.batch_id.substring(0, 8)}</span></p>
+                                <p class="mb-1"><strong>Статус:</strong> <span class="badge ${getStatusBadgeClass(scan.status)}">${scan.status}</span></p>
+                                <p class="mb-0 text-muted small"><i class="bi bi-clock"></i> ${new Date(scan.timestamp).toLocaleString('ru-RU')}</p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); window.location.hash='/batch/${scan.batch_id}'">
+                                <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -201,6 +208,17 @@ async function scanQRToken() {
         // Display batch info
         const resultDiv = document.querySelector('#result-container');
         resultDiv.style.display = 'block';
+        const isDriver = profile.role === 'driver' || profile.role === 'DRIVER';
+        const pickupActionHtml = isDriver
+            ? `<div class="mt-3 d-flex gap-2">
+                    <button class="btn btn-success flex-grow-1" onclick="confirmPickupFromScan('${batchData.batch_id}', '${token.replace(/'/g, "\\'")}')">
+                        <i class="bi bi-check2-circle"></i> Подтвердить забор партии
+                    </button>
+                    <button class="btn btn-info flex-grow-1" onclick="window.location.hash='/batch/${batchData.batch_id}'">
+                        <i class="bi bi-eye"></i> Полные детали
+                    </button>
+               </div>`
+            : '';
         resultDiv.innerHTML = `
             <div class="alert alert-success">
                 <h5><i class="bi bi-check-circle"></i> Доступ предоставлен!</h5>
@@ -220,6 +238,7 @@ async function scanQRToken() {
                     <p><strong>От:</strong> ${batchData.educator_organization_name}</p>
                     <p><strong>На переработку:</strong> ${batchData.processor_organization_name}</p>
                     <p><strong>Доступ действителен до:</strong> ${new Date(batchData.access_expires_at).toLocaleString('ru-RU')}</p>
+                    ${pickupActionHtml}
                 </div>
             </div>
         `;
@@ -228,5 +247,48 @@ async function scanQRToken() {
         document.querySelector('#qr-token-input').value = '';
     } catch (error) {
         alert('Ошибка при сканировании: ' + error.message);
+    }
+}
+
+async function confirmPickupFromScan(batchId, token) {
+    try {
+        const result = await api.confirmPickup(batchId, token);
+        
+        // Show success message with options instead of just redirecting
+        const resultDiv = document.querySelector('#result-container');
+        resultDiv.innerHTML = `
+            <div class="alert alert-success">
+                <h5><i class="bi bi-check-circle"></i> Забор подтвержден!</h5>
+                <p>Статус партии изменен на: <strong>${result.new_status}</strong></p>
+            </div>
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="text-muted mb-3">Что дальше?</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-grow-1" onclick="window.location.hash='/batch/${batchId}'">
+                            <i class="bi bi-eye"></i> Посмотреть партию
+                        </button>
+                        <button class="btn btn-secondary flex-grow-1" onclick="location.reload()">
+                            <i class="bi bi-arrow-counterclockwise"></i> Новое сканирование
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        alert('Ошибка подтверждения забора: ' + error.message);
+    }
+}
+
+function getStatusBadgeClass(status) {
+    switch(status) {
+        case 'created':
+            return 'bg-secondary';
+        case 'in_transit':
+            return 'bg-warning text-dark';
+        case 'received':
+            return 'bg-success';
+        default:
+            return 'bg-info';
     }
 }

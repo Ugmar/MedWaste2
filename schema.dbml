@@ -1,0 +1,147 @@
+// MedWaste2 Database Schema (DBML)
+// Medical waste tracking and processing system
+
+Table organizations {
+  id uuid [pk]
+  inn varchar(12) [unique, not null]
+  kpp varchar(9)
+  name varchar(255) [not null]
+  
+  Indexes {
+    inn
+  }
+}
+
+Table users {
+  id uuid [pk]
+  username varchar(100) [unique, not null]
+  email varchar(100) [unique, not null]
+  full_name varchar(255) [not null]
+  password_hash varchar(255) [not null]
+  role enum [not null, note: "UserRole: ADMIN, EDUCATOR, DRIVER, PROCESSOR, INSPECTOR"]
+  organization_id uuid [not null, ref: > organizations.id]
+  
+  Indexes {
+    username
+    email
+    organization_id
+  }
+}
+
+Table waste_types {
+  id uuid [pk]
+  code varchar(20) [unique, not null]
+  name varchar(255) [not null]
+  waste_class enum [not null, note: "WasteClass: CLASS_I, CLASS_II, CLASS_III, CLASS_IV, CLASS_V"]
+  description text
+  created_at datetime [default: `utc_now()`]
+  updated_at datetime [default: `utc_now()`]
+  
+  Indexes {
+    code
+  }
+}
+
+Table waste_batches {
+  id uuid [pk]
+  waste_type_id uuid [not null, ref: > waste_types.id]
+  quantity numeric(10,2) [not null]
+  unit varchar(20) [not null]
+  educator_id uuid [not null, ref: > users.id]
+  driver_id uuid [ref: > users.id]
+  organization_id uuid [not null, ref: > organizations.id]
+  processor_organization_id uuid [not null, ref: > organizations.id]
+  pickup_address text [not null]
+  delivery_address text [not null]
+  status enum [default: "CREATED", not null, note: "WasteStatus: CREATED, IN_TRANSIT, DELIVERED, PROCESSED, CANCELLED"]
+  created_at datetime [default: `utc_now()`]
+  updated_at datetime [default: `utc_now()`]
+  
+  Indexes {
+    waste_type_id
+    educator_id
+    driver_id
+    organization_id
+    processor_organization_id
+    status
+  }
+}
+
+Table qr_tokens {
+  id uuid [pk]
+  token varchar(255) [unique, not null]
+  batch_id uuid [not null, ref: > waste_batches.id]
+  expires_at datetime [not null]
+  is_valid boolean [default: true]
+  created_at datetime [default: `utc_now()`]
+  scanned_count integer [default: 0]
+  
+  Indexes {
+    token
+    batch_id
+  }
+}
+
+Table batch_status_history {
+  id uuid [pk]
+  batch_id uuid [not null, ref: > waste_batches.id]
+  old_status enum [note: "WasteStatus"]
+  new_status enum [not null, note: "WasteStatus"]
+  changed_at datetime [default: `utc_now()`]
+  changed_by_id uuid [ref: > users.id]
+  
+  Indexes {
+    batch_id
+    changed_by_id
+  }
+}
+
+Table events {
+  id uuid [pk]
+  event_type enum [not null, note: "EventType"]
+  user_id uuid [ref: > users.id]
+  object_type varchar(50) [not null]
+  object_id uuid [not null]
+  description text
+  created_at datetime [default: `utc_now()`]
+  
+  Indexes {
+    user_id
+    event_type
+    object_type
+    object_id
+  }
+}
+
+// Role-specific profiles using JOIN table inheritance pattern
+Table educator_profiles {
+  user_id uuid [pk, ref: - users.id]
+  waste_license_number varchar(50)
+  educator_call_address text
+  created_at datetime [default: `utc_now()`]
+  updated_at datetime [default: `utc_now()`]
+}
+
+Table driver_profiles {
+  user_id uuid [pk, ref: - users.id]
+  vehicle_number varchar(20)
+  waste_license_number varchar(50)
+  created_at datetime [default: `utc_now()`]
+  updated_at datetime [default: `utc_now()`]
+}
+
+Table processor_profiles {
+  user_id uuid [pk, ref: - users.id]
+  processor_license_number varchar(50)
+  processor_facility_address text
+  created_at datetime [default: `utc_now()`]
+  updated_at datetime [default: `utc_now()`]
+}
+
+Table inspector_profiles {
+  user_id uuid [pk, ref: - users.id]
+  inspector_license_number varchar(50)
+  department varchar(255)
+  created_at datetime [default: `utc_now()`]
+  updated_at datetime [default: `utc_now()`]
+}

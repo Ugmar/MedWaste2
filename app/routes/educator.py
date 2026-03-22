@@ -80,7 +80,13 @@ async def create_batch(
         object_id=created_batch.id,
         description=f"Создана партия {created_batch.id}",
     )
-    return created_batch
+    loaded_batch = await WasteBatchService.get_by_id(db, created_batch.id)
+    if not loaded_batch:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось загрузить созданную партию",
+        )
+    return loaded_batch
 
 
 @router.get("/drivers", response_model=List[UserResponse])
@@ -134,7 +140,7 @@ async def get_batch_details(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Партия не найдена"
         )
-    
+
     # Админ может видеть любую партию, образователь - только свои
     if current_educator.role != UserRole.ADMIN and batch.educator_id != current_educator.id:
         raise HTTPException(
@@ -246,7 +252,8 @@ async def export_batches_csv(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=educator_batches_report.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=educator_batches_report.csv"},
     )
 
 
@@ -259,19 +266,22 @@ async def export_events_csv(
 ):
     """Экспортировать CSV-отчет по событиям образователя за период."""
     batch_ids_result = await db.execute(
-        select(WasteBatch.id).where(WasteBatch.educator_id == current_educator.id)
+        select(WasteBatch.id).where(
+            WasteBatch.educator_id == current_educator.id)
     )
     batch_ids = batch_ids_result.scalars().all()
 
     if not batch_ids:
         output = StringIO()
         writer = csv.writer(output)
-        writer.writerow(["event_id", "event_type", "user_id", "object_type", "object_id", "description", "created_at"])
+        writer.writerow(["event_id", "event_type", "user_id",
+                        "object_type", "object_id", "description", "created_at"])
         output.seek(0)
         return StreamingResponse(
             iter([output.getvalue()]),
             media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=educator_events_report.csv"},
+            headers={
+                "Content-Disposition": "attachment; filename=educator_events_report.csv"},
         )
 
     query = select(Event).where(
@@ -288,7 +298,8 @@ async def export_events_csv(
 
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["event_id", "event_type", "user_id", "object_type", "object_id", "description", "created_at"])
+    writer.writerow(["event_id", "event_type", "user_id",
+                    "object_type", "object_id", "description", "created_at"])
     for event in events:
         writer.writerow([
             str(event.id),
@@ -304,5 +315,6 @@ async def export_events_csv(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=educator_events_report.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=educator_events_report.csv"},
     )

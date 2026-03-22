@@ -61,8 +61,11 @@ class Router {
             const profile = await api.getProfile();
             const appContainer = document.getElementById('app');
             
-            const isEducator = profile.role === 'EDUCATOR';
+            const isEducator = profile.role === 'educator';
             const canGenerateQR = isEducator && batch.educator_id === profile.id;
+            const deliveryAddressHtml = isEducator
+                ? ''
+                : `<p><strong>Адрес доставки:</strong> ${batch.delivery_address}</p>`;
             
             const qrButtonHTML = canGenerateQR ? `
                 <button class="btn btn-primary" onclick="generateQRCode('${batch.id}')">
@@ -91,7 +94,7 @@ class Router {
                                 </div>
                                 <div class="col-md-6">
                                     <p><strong>Адрес сбора:</strong> ${batch.pickup_address}</p>
-                                    <p><strong>Адрес доставки:</strong> ${batch.delivery_address}</p>
+                                    ${deliveryAddressHtml}
                                     <p><strong>Создана:</strong> ${new Date(batch.created_at).toLocaleString('ru-RU')}</p>
                                 </div>
                             </div>
@@ -115,5 +118,3 @@ class Router {
         }
     }
 }
-
-const router = new Router();

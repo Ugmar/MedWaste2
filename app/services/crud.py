@@ -103,27 +103,32 @@ class UserService:
         )
         db.add(db_user)
         await db.commit()
-        await db.refresh(db_user)
-        return db_user
+        # Reload with relations used by response schemas.
+        return await UserService.get_by_id(db, db_user.id)
 
     @staticmethod
     async def get_by_id(db: AsyncSession, user_id: UUID) -> User | None:
         result = await db.execute(
-            select(User).where(User.id == user_id).options(selectinload(User.organization))
+            select(User).where(User.id == user_id).options(
+                selectinload(User.organization))
         )
         return result.scalars().first()
 
     @staticmethod
     async def get_by_username(db: AsyncSession, username: str) -> User | None:
         result = await db.execute(
-            select(User).where(User.username == username)
+            select(User)
+            .options(selectinload(User.organization))
+            .where(User.username == username)
         )
         return result.scalars().first()
 
     @staticmethod
     async def get_by_email(db: AsyncSession, email: str) -> User | None:
         result = await db.execute(
-            select(User).where(User.email == email)
+            select(User)
+            .options(selectinload(User.organization))
+            .where(User.email == email)
         )
         return result.scalars().first()
 
@@ -146,6 +151,7 @@ class UserService:
     ) -> list[User]:
         result = await db.execute(
             select(User)
+            .options(selectinload(User.organization))
             .where(User.organization_id == org_id)
             .offset(skip)
             .limit(limit)
@@ -158,6 +164,7 @@ class UserService:
     ) -> list[User]:
         result = await db.execute(
             select(User)
+            .options(selectinload(User.organization))
             .where(User.role == UserRole.DRIVER)
             .offset(skip)
             .limit(limit)
@@ -170,6 +177,7 @@ class UserService:
     ) -> list[User]:
         result = await db.execute(
             select(User)
+            .options(selectinload(User.organization))
             .where(
                 User.organization_id == org_id,
                 User.role == UserRole.DRIVER,
@@ -194,8 +202,8 @@ class UserService:
             setattr(db_user, key, value)
 
         await db.commit()
-        await db.refresh(db_user)
-        return db_user
+        # Reload with relations used by response schemas.
+        return await UserService.get_by_id(db, user_id)
 
     @staticmethod
     async def delete(db: AsyncSession, user_id: UUID) -> bool:

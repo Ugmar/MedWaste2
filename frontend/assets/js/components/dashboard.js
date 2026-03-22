@@ -1,629 +1,541 @@
 class DashboardComponent {
-    async render() {
-        const profile = await api.getProfile();
-        const userRole = profile.role;
-        
-        let dashboard = '';
-        
-        switch(userRole) {
-            case 'EDUCATOR':
-                dashboard = await this.renderEducatorDashboard();
-                break;
-            case 'DRIVER':
-                dashboard = await this.renderDriverDashboard();
-                break;
-            case 'PROCESSOR':
-                dashboard = await this.renderProcessorDashboard();
-                break;
-            case 'INSPECTOR':
-                dashboard = await this.renderInspectorDashboard();
-                break;
-            default:
-                dashboard = await this.renderAdminDashboard();
-        }
-        
-        return dashboard;
+    constructor() {
+        this.educatorFilterStorageKey = 'educator_dashboard_filter_mode';
     }
 
-    async renderEducatorDashboard() {
+    async render() {
         const container = document.createElement('div');
         container.className = 'container-lg';
-        
+
         try {
-            const batches = await api.getBatches();
-            const statusStats = {
-                created: batches.filter(b => b.status === 'CREATED' || b.status === 'created').length,
-                in_transit: batches.filter(b => b.status === 'IN_TRANSIT' || b.status === 'in_transit').length,
-                received: batches.filter(b => b.status === 'RECEIVED' || b.status === 'received').length
-            };
-            
-            const totalQuantity = batches.reduce((sum, b) => sum + parseFloat(b.quantity), 0);
-            
-            container.innerHTML = `
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <h1 class="fw-bold mb-2"><i class="bi bi-graph-up"></i> Dashboard - Образователь</h1>
-                        <p class="text-muted">Обзор ваших партий отходов</p>
-                    </div>
-                </div>
+            const profile = await api.getProfile();
 
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-primary">
-                                <i class="bi bi-boxes"></i>
-                            </div>
-                            <h3>${batches.length}</h3>
-                            <p>Всего партий</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-warning">
-                                <i class="bi bi-clock"></i>
-                            </div>
-                            <h3>${statusStats.created}</h3>
-                            <p>В подготовке</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-info">
-                                <i class="bi bi-truck"></i>
-                            </div>
-                            <h3>${statusStats.in_transit}</h3>
-                            <p>В пути</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-success">
-                                <i class="bi bi-check-circle"></i>
-                            </div>
-                            <h3>${statusStats.received}</h3>
-                            <p>Получено</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-3">
-                    <div class="col-lg-8">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-list-check"></i> Последние партии
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Тип отходов</th>
-                                                <th>Количество</th>
-                                                <th>Статус</th>
-                                                <th>Дата создания</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${batches.slice(0, 5).map(b => `
-                                                <tr>
-                                                    <td>${b.waste_type?.name || '-'}</td>
-                                                    <td>${b.quantity} ${b.unit}</td>
-                                                    <td><span class="badge bg-${this.getStatusColor(b.status)}">${b.status}</span></td>
-                                                    <td>${new Date(b.created_at).toLocaleDateString('ru-RU')}</td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="bi bi-info-circle"></i> Действия
-                            </div>
-                            <div class="card-body">
-                                <a href="#/batches" class="btn btn-outline-primary w-100 mb-2">
-                                    <i class="bi bi-plus-circle"></i> Новая партия
-                                </a>
-                                <a href="#/profile" class="btn btn-outline-info w-100">
-                                    <i class="bi bi-gear"></i> Профиль
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            if (profile.role === 'educator') {
+                container.innerHTML = await this.renderEducatorDashboard(profile);
+                this.bindEducatorDashboardActions(container);
+            } else if (profile.role === 'driver') {
+                container.innerHTML = await this.renderDriverDashboard(profile);
+            } else if (profile.role === 'processor') {
+                container.innerHTML = await this.renderProcessorDashboard(profile);
+                this.bindProcessorDashboardActions(container);
+            } else if (profile.role === 'inspector') {
+                container.innerHTML = await this.renderInspectorDashboard(profile);
+            } else {
+                container.innerHTML = await this.renderAdminDashboard(profile);
+            }
         } catch (error) {
-            container.innerHTML = `<div class="alert alert-danger">Ошибка загрузки: ${error.message}</div>`;
+            container.innerHTML = `<div class="alert alert-danger mt-4">Ошибка загрузки dashboard: ${error.message}</div>`;
         }
 
         return container;
     }
 
-    async renderDriverDashboard() {
-        const container = document.createElement('div');
-        container.className = 'container-lg';
-        
-        const html = `
+    async renderEducatorDashboard(profile) {
+        const batches = await api.getEducatorBatches();
+        this.educatorBatches = batches;
+        const created = batches.filter((b) => b.status === 'created').length;
+        const inTransit = batches.filter((b) => b.status === 'in_transit').length;
+        const received = batches.filter((b) => b.status === 'received').length;
+        const savedMode = this.getSavedEducatorFilterMode();
+        const defaultStatus = savedMode === 'all' ? 'all' : 'created';
+
+        return `
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h1 class="fw-bold mb-2"><i class="bi bi-person-workspace"></i> Dashboard - Образователь</h1>
+                    <p class="text-muted mb-0">${profile.full_name}</p>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><div class="stat-card"><h3>${batches.length}</h3><p>Всего партий</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${created}</h3><p>Созданы</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${inTransit}</h3><p>В пути</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${received}</h3><p>Приняты</p></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-body d-flex gap-2 flex-wrap">
+                    <a href="#/batches" class="btn btn-primary">Управление партиями</a>
+                    <button class="btn btn-outline-secondary" onclick="downloadEducatorCsv()">Выгрузить CSV</button>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Партии образователя</span>
+                    <span class="badge bg-info" id="educator-filtered-count">0</span>
+                </div>
+                <div class="card-body table-responsive">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Быстрые фильтры">
+                                <button type="button" class="btn ${savedMode === 'active' ? 'btn-primary' : 'btn-outline-primary'}" data-filter-mode="active">Только активные</button>
+                                <button type="button" class="btn ${savedMode === 'all' ? 'btn-primary' : 'btn-outline-primary'}" data-filter-mode="all">Все</button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-1">Статус</label>
+                            <select class="form-select form-select-sm" id="educator-filter-status">
+                                <option value="created" ${defaultStatus === 'created' ? 'selected' : ''}>created</option>
+                                <option value="in_transit">in_transit</option>
+                                <option value="received">received</option>
+                                <option value="all" ${defaultStatus === 'all' ? 'selected' : ''}>Все статусы</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label mb-1">Поиск</label>
+                            <input class="form-control form-control-sm" id="educator-filter-query" placeholder="ID, тип отходов, адрес вывоза">
+                        </div>
+                    </div>
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Тип</th>
+                                <th>Количество</th>
+                                <th>Адрес вывоза</th>
+                                <th>Создана</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="educator-batches-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    bindEducatorDashboardActions(container) {
+        const statusSelect = container.querySelector('#educator-filter-status');
+        const queryInput = container.querySelector('#educator-filter-query');
+        const modeButtons = container.querySelectorAll('[data-filter-mode]');
+
+        const rerender = () => this.renderEducatorTable(container);
+        statusSelect.addEventListener('change', rerender);
+        queryInput.addEventListener('input', rerender);
+        modeButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const mode = button.dataset.filterMode;
+                this.setSavedEducatorFilterMode(mode);
+                if (mode === 'all') {
+                    statusSelect.value = 'all';
+                } else if (statusSelect.value === 'all') {
+                    statusSelect.value = 'created';
+                }
+                modeButtons.forEach((btn) => {
+                    const isActive = btn.dataset.filterMode === mode;
+                    btn.classList.toggle('btn-primary', isActive);
+                    btn.classList.toggle('btn-outline-primary', !isActive);
+                });
+                this.renderEducatorTable(container);
+            });
+        });
+
+        container.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-action="educator-create-qr"]');
+            if (!button) {
+                return;
+            }
+            const batchId = button.dataset.id;
+            try {
+                const tokenData = await getOrCreateBatchQrToken(batchId);
+                if (!tokenData) {
+                    return;
+                }
+                showGeneratedQrModal({
+                    token: tokenData.token,
+                    batchId,
+                    expiresAt: tokenData.expires_at,
+                });
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        this.renderEducatorTable(container);
+    }
+
+    getSavedEducatorFilterMode() {
+        const value = localStorage.getItem(this.educatorFilterStorageKey);
+        return value === 'all' ? 'all' : 'active';
+    }
+
+    setSavedEducatorFilterMode(mode) {
+        localStorage.setItem(this.educatorFilterStorageKey, mode === 'all' ? 'all' : 'active');
+    }
+
+    renderEducatorTable(container) {
+        const statusSelect = container.querySelector('#educator-filter-status');
+        const queryInput = container.querySelector('#educator-filter-query');
+        const tbody = container.querySelector('#educator-batches-tbody');
+        const countBadge = container.querySelector('#educator-filtered-count');
+
+        const mode = this.getSavedEducatorFilterMode();
+        const selectedStatus = statusSelect?.value || 'created';
+        const query = (queryInput?.value || '').trim().toLowerCase();
+
+        const filtered = (this.educatorBatches || [])
+            .filter((batch) => mode === 'all' || batch.status === 'created' || batch.status === 'in_transit')
+            .filter((batch) => selectedStatus === 'all' || batch.status === selectedStatus)
+            .filter((batch) => {
+                if (!query) {
+                    return true;
+                }
+                const haystack = [
+                    batch.id,
+                    batch.waste_type?.name,
+                    batch.pickup_address,
+                    batch.status,
+                ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+                return haystack.includes(query);
+            })
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        countBadge.textContent = String(filtered.length);
+
+        tbody.innerHTML = filtered.length
+            ? filtered.slice(0, 20).map((b) => `
+                <tr>
+                    <td>${b.id.slice(0, 8)}</td>
+                    <td>${b.waste_type?.name || '-'}</td>
+                    <td>${b.quantity} ${b.unit}</td>
+                    <td>${b.pickup_address || '-'}</td>
+                    <td>${b.created_at ? new Date(b.created_at).toLocaleString('ru-RU') : '-'}</td>
+                    <td>
+                        ${b.status === 'created'
+                            ? `<button class="btn btn-sm btn-outline-primary" data-action="educator-create-qr" data-id="${b.id}">QR код</button>`
+                            : '<span class="text-muted">QR недоступен</span>'}
+                    </td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="6" class="text-center text-muted py-3">По фильтру ничего не найдено</td></tr>';
+    }
+
+    async renderDriverDashboard(profile) {
+        const batches = await api.getDriverBatches();
+        const created = batches.filter((b) => b.status === 'created').length;
+        const inTransit = batches.filter((b) => b.status === 'in_transit').length;
+        const received = batches.filter((b) => b.status === 'received').length;
+        const active = batches
+            .filter((b) => b.status === 'created' || b.status === 'in_transit')
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        return `
             <div class="row mb-4">
                 <div class="col-12">
                     <h1 class="fw-bold mb-2"><i class="bi bi-truck"></i> Dashboard - Водитель</h1>
-                    <p class="text-muted">Ваши назначенные доставки</p>
+                    <p class="text-muted mb-0">${profile.full_name}</p>
                 </div>
             </div>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-warning">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <h3 id="pending-count">-</h3>
-                        <p>Ожидающих обработки</p>
-                    </div>
+                <div class="col-md-3"><div class="stat-card"><h3>${batches.length}</h3><p>Всего назначено</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${created}</h3><p>Ожидают забора</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${inTransit}</h3><p>В пути</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${received}</h3><p>Доставлены</p></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-body d-flex gap-2 flex-wrap">
+                    <a href="#/scan-qr" class="btn btn-primary">Сканирование QR</a>
+                    <a href="#/batches" class="btn btn-outline-secondary">Мои партии</a>
                 </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-info">
-                            <i class="bi bi-truck"></i>
-                        </div>
-                        <h3 id="transit-count">-</h3>
-                        <p>В пути</p>
-                    </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">Ближайшие точки забора</div>
+                <div class="card-body table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Тип</th>
+                                <th>Точка забора</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${active.length
+                                ? active.slice(0, 10).map((b) => `
+                                    <tr>
+                                        <td>${b.id.slice(0, 8)}</td>
+                                        <td>${b.waste_type?.name || '-'}</td>
+                                        <td>${b.pickup_address || '-'}</td>
+                                        <td><span class="badge bg-${b.status === 'created' ? 'info' : 'warning'}">${b.status}</span></td>
+                                    </tr>
+                                `).join('')
+                                : '<tr><td colspan="4" class="text-center text-muted py-3">Нет активных точек забора</td></tr>'}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="col-md-4">
-                    <a href="#/scan-qr" class="stat-card text-decoration-none">
-                        <div class="stat-icon bg-success" style="cursor: pointer;">
-                            <i class="bi bi-qr-code"></i>
-                        </div>
-                        <h3>Сканировать</h3>
-                        <p><small>Считать QR-код партии</small></p>
-                    </a>
+            </div>
+        `;
+    }
+
+    async renderProcessorDashboard(profile) {
+        const batches = await api.getAssignedBatches();
+        const inTransit = batches.filter((b) => b.status === 'in_transit').length;
+        const received = batches.filter((b) => b.status === 'received').length;
+        const recentBatches = batches
+            .slice()
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+        return `
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h1 class="fw-bold mb-2"><i class="bi bi-recycle"></i> Dashboard - Переработчик</h1>
+                    <p class="text-muted mb-0">${profile.full_name}</p>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4"><div class="stat-card"><h3>${batches.length}</h3><p>Всего партий</p></div></div>
+                <div class="col-md-4"><div class="stat-card"><h3>${inTransit}</h3><p>Ожидают приемки</p></div></div>
+                <div class="col-md-4"><div class="stat-card"><h3>${received}</h3><p>Приняты</p></div></div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body d-flex gap-2 flex-wrap">
+                    <a href="#/scan-qr" class="btn btn-primary">Сканирование QR</a>
                 </div>
             </div>
 
             <div class="card">
-                <div class="card-header">
-                    <i class="bi bi-list-check"></i> Назначенные доставки
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Партия</th>
-                                    <th>Тип отходов</th>
-                                    <th>Количество</th>
-                                    <th>Статус</th>
-                                    <th>От</th>
-                                    <th>До</th>
-                                </tr>
-                            </thead>
-                            <tbody id="driver-batches-table">
-                                <tr><td colspan="6" class="text-center text-muted">Загрузка...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-header">Партии моей организации</div>
+                <div class="card-body table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Тип</th>
+                                <th>Количество</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recentBatches.length
+                                ? recentBatches.map((b) => `
+                                    <tr>
+                                        <td>${b.id.slice(0, 8)}</td>
+                                        <td>${b.waste_type?.name || '-'}</td>
+                                        <td>${b.quantity} ${b.unit}</td>
+                                        <td><span class="badge bg-${b.status === 'received' ? 'success' : (b.status === 'in_transit' ? 'warning text-dark' : 'secondary')}">${b.status}</span></td>
+                                        <td>
+                                            ${b.status === 'in_transit'
+                                                ? `<button class="btn btn-sm btn-success" data-action="processor-receive-batch" data-id="${b.id}">Принять</button>`
+                                                : '<span class="text-muted">-</span>'}
+                                        </td>
+                                    </tr>
+                                `).join('')
+                                : '<tr><td colspan="5" class="text-center text-muted py-3">Нет партий</td></tr>'}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         `;
-
-        container.innerHTML = html;
-
-        // Load driver's assigned batches
-        setTimeout(async () => {
-            try {
-                const batches = await api.getDriverBatches();
-                const tbody = container.querySelector('#driver-batches-table');
-                
-                if (batches.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Нет назначенных доставок</td></tr>';
-                } else {
-                    const createdCount = batches.filter(b => b.status === 'CREATED' || b.status === 'created').length;
-                    const transitCount = batches.filter(b => b.status === 'IN_TRANSIT' || b.status === 'in_transit').length;
-                    
-                    container.querySelector('#pending-count').textContent = createdCount;
-                    container.querySelector('#transit-count').textContent = transitCount;
-                    
-                    tbody.innerHTML = batches.slice(0, 15).map((b, idx) => `
-                        <tr>
-                            <td>#${String(idx + 1).padStart(3, '0')}</td>
-                            <td>${b.waste_type?.name || '-'}</td>
-                            <td>${b.quantity} ${b.unit}</td>
-                            <td><span class="badge bg-${this.getStatusColor(b.status)}">${b.status}</span></td>
-                            <td>${b.organization?.name || '-'}</td>
-                            <td>${b.destination_organization?.name || '-'}</td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки партий:', error);
-                container.querySelector('#driver-batches-table').innerHTML = `
-                    <tr><td colspan="6" class="text-center text-danger">Ошибка загрузки: ${error.message}</td></tr>
-                `;
-            }
-        }, 0);
-
-        return container;
     }
 
-    async renderProcessorDashboard() {
-        const container = document.createElement('div');
-        container.className = 'container-lg';
-        
-        const html = `
+    bindProcessorDashboardActions(container) {
+        container.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-action="processor-receive-batch"]');
+            if (!button) {
+                return;
+            }
+            try {
+                await api.receiveBatch(button.dataset.id);
+                window.location.hash = '/dashboard';
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+    }
+
+    async renderInspectorDashboard(profile) {
+        const summary = await api.getInspectorSummary();
+
+        return `
             <div class="row mb-4">
                 <div class="col-12">
-                    <h1 class="fw-bold mb-2"><i class="bi bi-tools"></i> Dashboard - Переработчик</h1>
-                    <p class="text-muted">Партии для обработки</p>
+                    <h1 class="fw-bold mb-2"><i class="bi bi-shield-check"></i> Dashboard - Инспектор</h1>
+                    <p class="text-muted mb-0">${profile.full_name}</p>
                 </div>
             </div>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-danger">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <h3 id="processor-pending">-</h3>
-                        <p>Ожидают обработки</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-success">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <h3 id="processor-completed">-</h3>
-                        <p>Обработано</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-info">
-                            <i class="bi bi-archive"></i>
-                        </div>
-                        <h3 id="processor-total">-</h3>
-                        <p>Всего партий</p>
-                    </div>
-                </div>
+                <div class="col-md-3"><div class="stat-card"><h3>${summary.total_batches}</h3><p>Всего партий</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${summary.batches_created}</h3><p>Созданы</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${summary.batches_in_transit}</h3><p>В пути</p></div></div>
+                <div class="col-md-3"><div class="stat-card"><h3>${summary.batches_received}</h3><p>Приняты</p></div></div>
             </div>
 
             <div class="card">
-                <div class="card-header">
-                    <i class="bi bi-list-check"></i> Партии для обработки
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Партия</th>
-                                    <th>Тип отходов</th>
-                                    <th>Количество</th>
-                                    <th>Статус</th>
-                                    <th>Доставлено</th>
-                                    <th>Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="processor-batches-table">
-                                <tr><td colspan="6" class="text-center text-muted">Загрузка...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-body d-flex gap-2 flex-wrap">
+                    <a href="#/batches" class="btn btn-primary">Журнал партий</a>
+                    <button class="btn btn-outline-secondary" onclick="downloadInspectorBatchesCsv()">CSV партий</button>
+                    <button class="btn btn-outline-secondary" onclick="downloadInspectorEventsCsv()">CSV событий</button>
                 </div>
             </div>
         `;
-        
-        container.innerHTML = html;
-        
-        // Load processor's assigned batches
-        setTimeout(async () => {
-            try {
-                const batches = await api.getAssignedBatches();
-                const tbody = container.querySelector('#processor-batches-table');
-                
-                if (batches.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Нет партий для обработки</td></tr>';
-                } else {
-                    const pendingCount = batches.filter(b => (b.status === 'IN_TRANSIT' || b.status === 'in_transit' || b.status === 'RECEIVED' || b.status === 'received')).length;
-                    const completedCount = batches.filter(b => b.status === 'PROCESSED' || b.status === 'processed').length;
-                    
-                    container.querySelector('#processor-pending').textContent = pendingCount;
-                    container.querySelector('#processor-completed').textContent = completedCount;
-                    container.querySelector('#processor-total').textContent = batches.length;
-                    
-                    tbody.innerHTML = batches.slice(0, 10).map((b, idx) => `
-                        <tr>
-                            <td>#${String(idx + 1).padStart(3, '0')}</td>
-                            <td>${b.waste_type?.name || '-'}</td>
-                            <td>${b.quantity} ${b.unit}</td>
-                            <td><span class="badge bg-${this.getStatusColor(b.status)}">${b.status}</span></td>
-                            <td><small>${new Date(b.updated_at).toLocaleDateString('ru-RU')}</small></td>
-                            <td>
-                                ${b.status === 'IN_TRANSIT' || b.status === 'in_transit' ? 
-                                    `<button class="btn btn-sm btn-success" onclick="receiveBatch('${b.id}')"><i class="bi bi-check"></i> Принять</button>` : 
-                                b.status === 'RECEIVED' || b.status === 'received' ?
-                                    `<button class="btn btn-sm btn-primary" onclick="completeBatch('${b.id}')"><i class="bi bi-check-all"></i> Обработано</button>` :
-                                    `<button class="btn btn-sm btn-info"><i class="bi bi-eye"></i> Подробнее</button>`}
-                            </td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки партий:', error);
-                container.querySelector('#processor-batches-table').innerHTML = `
-                    <tr><td colspan="6" class="text-center text-danger">Ошибка загрузки: ${error.message}</td></tr>
-                `;
-            }
-        }, 0);
-
-        return container;
     }
 
-    async renderInspectorDashboard() {
-        const container = document.createElement('div');
-        container.className = 'container-lg';
-        
-        container.innerHTML = `
+    async renderAdminDashboard(profile) {
+        const [orgs, wasteTypes] = await Promise.all([
+            api.getAdminOrganizations(),
+            api.getAdminWasteTypes(),
+        ]);
+
+        return `
             <div class="row mb-4">
                 <div class="col-12">
-                    <h1 class="fw-bold mb-2"><i class="bi bi-clipboard-check"></i> Dashboard - Инспектор</h1>
-                    <p class="text-muted">Аудит и отчетность</p>
+                    <h1 class="fw-bold mb-2"><i class="bi bi-gear"></i> Dashboard - Администратор</h1>
+                    <p class="text-muted mb-0">${profile.full_name}</p>
                 </div>
             </div>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-primary">
-                            <i class="bi bi-boxes"></i>
-                        </div>
-                        <h3 id="inspector-total-batches">-</h3>
-                        <p>Всего партий</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-success">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <h3 id="inspector-received-count">-</h3>
-                        <p>Обработано</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-warning">
-                            <i class="bi bi-truck"></i>
-                        </div>
-                        <h3 id="inspector-transit-count">-</h3>
-                        <p>В пути</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-info">
-                            <i class="bi bi-file-earmark-excel"></i>
-                        </div>
-                        <h3 style="font-size: 1.5rem;">
-                            <button class="btn btn-sm btn-outline-info" onclick="exportReport('batches')" title="Экспортировать партии">
-                                <i class="bi bi-download"></i>
-                            </button>
-                        </h3>
-                        <p>Экспорт партий</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card mb-3">
-                <div class="card-header">
-                    <i class="bi bi-download"></i> Экспорт отчетов
-                </div>
-                <div class="card-body">
-                    <button class="btn btn-outline-primary me-2" onclick="exportReport('batches')">
-                        <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт партий CSV
-                    </button>
-                    <button class="btn btn-outline-secondary" onclick="exportReport('events')">
-                        <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт событий CSV
-                    </button>
-                </div>
+                <div class="col-md-4"><div class="stat-card"><h3>${orgs.length}</h3><p>Организации</p></div></div>
+                <div class="col-md-4"><div class="stat-card"><h3>${wasteTypes.length}</h3><p>Типы отходов</p></div></div>
+                <div class="col-md-4"><div class="stat-card"><h3>5</h3><p>Ролей</p></div></div>
             </div>
 
             <div class="card">
-                <div class="card-header">
-                    <i class="bi bi-bar-chart"></i> Все партии
-                </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Партия</th>
-                                    <th>Тип</th>
-                                    <th>Кол-во</th>
-                                    <th>Статус</th>
-                                    <th>Дата создания</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inspector-batches-table">
-                                <tr><td colspan="5" class="text-center text-muted">Загрузка...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card mt-3">
-                <div class="card-header">
-                    <i class="bi bi-clock-history"></i> Последние события
-                </div>
-                <div class="card-body">
-                    <div id="recent-events-list">
-                        <div class="text-center text-muted">Загрузка событий...</div>
-                    </div>
+                    <a href="#/batches" class="btn btn-primary">Управление системой</a>
                 </div>
             </div>
         `;
+    }
+}
 
-        // Load summary statistics and recent events
-        setTimeout(async () => {
-            try {
-                const response = await fetch('/api/inspector/summary', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                });
-                const summary = await response.json();
-                container.querySelector('#inspector-total-batches').textContent = summary.total_batches;
-                container.querySelector('#inspector-received-count').textContent = summary.batches_received;
-                container.querySelector('#inspector-transit-count').textContent = summary.batches_in_transit;
-                
-                // Load recent events
-                try {
-                    const events = await api.getRecentEvents(10);
-                    const eventsList = container.querySelector('#recent-events-list');
-                    
-                    if (events.length === 0) {
-                        eventsList.innerHTML = '<div class="text-center text-muted">Нет событий</div>';
-                    } else {
-                        eventsList.innerHTML = events.map(event => `
-                            <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom">
-                                <div>
-                                    <p class="mb-0 fw-bold">${event.event_type}</p>
-                                    <small class="text-muted">${event.description || 'Нет описания'}</small>
-                                    <br>
-                                    <small class="text-secondary">${new Date(event.created_at).toLocaleString('ru-RU')}</small>
-                                </div>
-                            </div>
-                        `).join('');
-                    }
-                } catch (error) {
-                    console.error('Ошибка загрузки событий:', error);
-                    container.querySelector('#recent-events-list').innerHTML = '<div class="text-danger text-center">Ошибка загрузки событий</div>';
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки статистики:', error);
-            }
-        }, 0);
+function findActiveQrToken(tokens) {
+    const now = Date.now();
+    return [...tokens]
+        .filter((token) => token.is_valid && new Date(token.expires_at).getTime() > now)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null;
+}
 
-        return container;
+async function getOrCreateBatchQrToken(batchId) {
+    const existingTokens = await api.getBatchQRTokens(batchId, 0, 100);
+    const activeToken = findActiveQrToken(existingTokens || []);
+
+    if (activeToken) {
+        return activeToken;
     }
 
-    async renderAdminDashboard() {
-        const container = document.createElement('div');
-        container.className = 'container-lg';
-        
-        container.innerHTML = `
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h1 class="fw-bold mb-2"><i class="bi bi-speedometer2"></i> Dashboard - Администратор</h1>
-                    <p class="text-muted">Полный обзор системы</p>
-                </div>
-            </div>
-
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-primary">
-                            <i class="bi bi-boxes"></i>
-                        </div>
-                        <h3>120</h3>
-                        <p>Всего партий</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-success">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <h3>850 кг</h3>
-                        <p>Обработано</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-warning">
-                            <i class="bi bi-truck"></i>
-                        </div>
-                        <h3>25</h3>
-                        <p>В пути</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-icon bg-danger">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <h3>3</h3>
-                        <p>Проблем</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-3">
-                <div class="col-lg-8">
-                    <div class="card">
-                        <div class="card-header">
-                            <i class="bi bi-list-check"></i> Последние партии
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Образователь</th>
-                                            <th>Статус</th>
-                                            <th>Кол-во</th>
-                                            <th>Дата</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td colspan="5" class="text-center text-muted">Загрузка...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <i class="bi bi-gear"></i> Администрирование
-                        </div>
-                        <div class="card-body">
-                            <a href="#/batches" class="btn btn-outline-primary w-100 mb-2">
-                                <i class="bi bi-boxes"></i> Все партии
-                            </a>
-                            <a href="#/organizations" class="btn btn-outline-secondary w-100 mb-2">
-                                <i class="bi bi-building"></i> Организации
-                            </a>
-                            <a href="#/profile" class="btn btn-outline-info w-100">
-                                <i class="bi bi-gear"></i> Настройки
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        return container;
+    const lifetimeInput = prompt('Для этой партии нет действующего QR. Укажите срок действия (1-7 дней):', '3');
+    if (lifetimeInput === null) {
+        return null;
     }
 
-    getStatusColor(status) {
-        const statusMap = {
-            'created': 'info',
-            'in_transit': 'warning',
-            'received': 'success',
-            'processed': 'dark',
-            'CREATED': 'info',
-            'IN_TRANSIT': 'warning',
-            'RECEIVED': 'success',
-            'PROCESSED': 'dark'
-        };
-        return statusMap[status] || 'secondary';
+    const days = Number(lifetimeInput || 3);
+    if (!days || days < 1 || days > 7) {
+        alert('Укажите число от 1 до 7');
+        return null;
     }
+
+    return api.generateQRToken(batchId, days);
+}
+
+async function downloadEducatorCsv() {
+    try {
+        await api.downloadCsv(api.getEducatorBatchesReportUrl(), 'educator_batches_report.csv');
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function downloadInspectorBatchesCsv() {
+    try {
+        await api.downloadCsv(api.getInspectorBatchesReportUrl(), 'inspector_batches_report.csv');
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function downloadInspectorEventsCsv() {
+    try {
+        await api.downloadCsv(api.getInspectorEventsReportUrl(), 'inspector_events_report.csv');
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function ensureQrModal() {
+    let modal = document.getElementById('generated-qr-modal');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.id = 'generated-qr-modal';
+    modal.className = 'modal fade';
+    modal.tabIndex = -1;
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">QR код для водителя</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="generated-qr-canvas" class="d-flex justify-content-center mb-3"></div>
+                    <p class="mb-1"><strong>Токен:</strong></p>
+                    <code id="generated-qr-token" style="word-break: break-all;"></code>
+                    <p class="mt-3 mb-0 text-muted" id="generated-qr-meta"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-dark" id="print-qr-token-btn">Распечатать</button>
+                    <button type="button" class="btn btn-outline-secondary" id="copy-qr-token-btn">Копировать токен</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Готово</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('#copy-qr-token-btn').addEventListener('click', async () => {
+        const token = modal.querySelector('#generated-qr-token').textContent || '';
+        try {
+            await navigator.clipboard.writeText(token);
+            alert('Токен скопирован');
+        } catch (_) {
+            alert('Не удалось скопировать токен');
+        }
+    });
+
+    modal.querySelector('#print-qr-token-btn').addEventListener('click', () => {
+        alert('Распечатать: функция в разработке');
+    });
+
+    return modal;
+}
+
+function showGeneratedQrModal({ token, batchId, expiresAt }) {
+    const modalEl = ensureQrModal();
+    const qrContainer = modalEl.querySelector('#generated-qr-canvas');
+    const tokenEl = modalEl.querySelector('#generated-qr-token');
+    const metaEl = modalEl.querySelector('#generated-qr-meta');
+
+    qrContainer.innerHTML = '';
+    tokenEl.textContent = token;
+    metaEl.textContent = `Партия: ${batchId.slice(0, 8)} • Действует до: ${new Date(expiresAt).toLocaleString('ru-RU')}`;
+
+    if (typeof QRCode !== 'undefined') {
+        new QRCode(qrContainer, {
+            text: token,
+            width: 220,
+            height: 220,
+            correctLevel: QRCode.CorrectLevel.M,
+        });
+    } else {
+        qrContainer.innerHTML = '<div class="alert alert-warning mb-0">Библиотека QR недоступна. Используйте токен вручную.</div>';
+    }
+
+    const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    bsModal.show();
 }
