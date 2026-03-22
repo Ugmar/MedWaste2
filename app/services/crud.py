@@ -216,6 +216,18 @@ class WasteBatchService:
         return result.scalars().all()
 
     @staticmethod
+    async def get_all(
+        db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> list[WasteBatch]:
+        result = await db.execute(
+            select(WasteBatch)
+            .options(selectinload(WasteBatch.waste_type))
+            .offset(skip)
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    @staticmethod
     async def get_all_by_organization(
         db: AsyncSession, org_id: UUID, skip: int = 0, limit: int = 100
     ) -> list[WasteBatch]:

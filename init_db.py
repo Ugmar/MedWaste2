@@ -128,21 +128,21 @@ async def init_db():
             print("👥 Создание пользователей...")
 
             users_data = [
-                {"username": "admin", "email": "admin@medwaste.local", "full_name": "System Administrator",
+                {"username": "admin", "email": "admin@example.com", "full_name": "System Administrator",
                     "role": UserRole.ADMIN, "org_name": "Администрация MedWaste"},
-                {"username": "educator_1", "email": "educator1@medwaste.local", "full_name": "Educator One",
+                {"username": "educator_1", "email": "educator1@example.com", "full_name": "Educator One",
                     "role": UserRole.EDUCATOR, "org_name": "Больница №1 'Скорая помощь'"},
-                {"username": "educator_2", "email": "educator2@medwaste.local",
+                {"username": "educator_2", "email": "educator2@example.com",
                     "full_name": "Educator Two", "role": UserRole.EDUCATOR, "org_name": "Клиника 'Здоровье'"},
-                {"username": "driver_1", "email": "driver1@medwaste.local", "full_name": "Driver One",
+                {"username": "driver_1", "email": "driver1@example.com", "full_name": "Driver One",
                     "role": UserRole.DRIVER, "org_name": "Завод переработки отходов 'ЭкоПро'"},
-                {"username": "driver_2", "email": "driver2@medwaste.local", "full_name": "Driver Two",
+                {"username": "driver_2", "email": "driver2@example.com", "full_name": "Driver Two",
                     "role": UserRole.DRIVER, "org_name": "Центр утилизации медотходов"},
-                {"username": "processor_1", "email": "processor1@medwaste.local", "full_name": "Processor One",
+                {"username": "processor_1", "email": "processor1@example.com", "full_name": "Processor One",
                     "role": UserRole.PROCESSOR, "org_name": "Завод переработки отходов 'ЭкоПро'"},
-                {"username": "processor_2", "email": "processor2@medwaste.local", "full_name": "Processor Two",
+                {"username": "processor_2", "email": "processor2@example.com", "full_name": "Processor Two",
                     "role": UserRole.PROCESSOR, "org_name": "Центр утилизации медотходов"},
-                {"username": "inspector_1", "email": "inspector1@medwaste.local", "full_name": "Inspector One",
+                {"username": "inspector_1", "email": "inspector1@example.com", "full_name": "Inspector One",
                     "role": UserRole.INSPECTOR, "org_name": "Администрация MedWaste"},
             ]
 

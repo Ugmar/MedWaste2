@@ -1,4 +1,9 @@
-.PHONY: help install dev up down logs clean lint format test db-init db-drop ps
+.PHONY: help install dev up down logs clean lint format test db-init db-drop ps rebuild restart
+
+# Colors
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m
 
 # Variables
 PYTHON := python3
@@ -46,10 +51,15 @@ ps:
 	@echo "$(BLUE)Running containers:$(NC)"
 	$(DOCKER_COMPOSE) ps
 
-## db-init: Initialize database
+## db-init: Initialize database (in Docker container)
 db-init:
-	@echo "Initializing database...$(NC)"
-	$(PYTHON) init_db.py
+	@echo "$(YELLOW)Initializing database in Docker...$(NC)"
+	@if [ -z "$$($(DOCKER_COMPOSE) ps -q api)" ]; then \
+		echo "$(YELLOW)Starting containers...$(NC)"; \
+		$(DOCKER_COMPOSE) up -d && sleep 3; \
+	fi
+	$(DOCKER_COMPOSE) exec api python init_db.py
+	@echo "$(YELLOW)✓ Database initialized$(NC)"
 
 ## db-drop: Stop database and remove volumes
 db-drop:

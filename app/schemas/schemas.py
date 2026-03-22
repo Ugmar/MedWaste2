@@ -78,7 +78,7 @@ class UserBase(BaseModel):
     """Базовая схема пользователя."""
 
     username: str
-    email: EmailStr
+    email: str
     full_name: str
     role: UserRole
 

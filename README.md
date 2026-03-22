@@ -22,25 +22,53 @@ JWT выбран по двум причинам:
 
 ## Быстрый запуск
 
-1. Клонировать проект.
-2. Запустить сервисы:
+### С помощью Docker Compose (рекомендуется)
 
 ```bash
-docker-compose up --build
+# Запустить все сервисы
+make up
+
+# Инициализировать базу данных
+make db-init
+
+# Просмотреть логи
+make logs
 ```
 
-3. Проверить, что API поднялось:
+Приложение доступно по адресу: **http://localhost**
+
+Подробная информация о фронтенде: см. [FRONTEND.md](FRONTEND.md)
+
+### Локальная разработка
 
 ```bash
-curl http://localhost:8000/health
+# Установить зависимости
+make install
+
+# Инициализировать базу данных
+make db-init
+
+# Запустить backend в режиме разработки
+make dev
 ```
 
-4. Открыть документацию:
-
+Backend доступен на: **http://localhost:8000**
 - Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
-Тестовые пользователи создаются автоматически скриптом `init_db.py`.
-Пример: `admin / password123`.
+Фронтенд в разработке нужно сервировать отдельно (смотри [FRONTEND.md](FRONTEND.md))
+
+### Тестовые учётные данные
+
+Создаются автоматически скриптом `init_db.py`:
+
+| Роль | Username | Password |
+|------|----------|----------|
+| Администратор | admin | password123 |
+| Учреждение | educator | password123 |
+| Водитель | driver | password123 |
+| Инспектор | inspector | password123 |
+| Переработчик | processor | password123 |
 
 ## Что умеет система
 

@@ -52,6 +52,10 @@ async def get_current_user(
 def _check_role_factory(*allowed_roles: UserRole) -> Callable:
     """Factory функция для создания роль-зависимостей (DRY принцип)."""
     async def check_role(current_user: User = Depends(get_current_user)) -> User:
+        # Admin всегда имеет доступ
+        if current_user.role == UserRole.ADMIN:
+            return current_user
+        
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

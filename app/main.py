@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.models import models
-from app.routes import auth, admin, educator, driver, processor, inspector
+from app.routes import auth, admin, educator, driver, processor, inspector, public
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(public.router)
 app.include_router(admin.router)
 app.include_router(educator.router)
 app.include_router(driver.router)

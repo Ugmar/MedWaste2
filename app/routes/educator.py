@@ -113,7 +113,10 @@ async def list_my_batches(
     current_educator: User = Depends(get_current_educator),
     db: AsyncSession = Depends(get_db),
 ):
-    """Получить мои партии отходов."""
+    """Получить мои партии отходов. Администратор видит все партии."""
+    # Админ видит все партии, образователь - только свои
+    if current_educator.role == UserRole.ADMIN:
+        return await WasteBatchService.get_all(db, skip, limit)
     return await WasteBatchService.get_all_by_educator(
         db, current_educator.id, skip, limit
     )
