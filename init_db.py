@@ -254,26 +254,30 @@ async def init_db():
             ]
 
             for idx, (educator, org) in enumerate(educator_org_pairs):
-                for waste_idx, (code, waste_type) in enumerate(list(waste_types.items())[:3]):
-                    assigned_driver = users["driver_1"] if idx == 0 else users["driver_2"]
-                    assigned_processor_org = assigned_driver.organization_id
-                    batch = WasteBatch(
-                        id=uuid.uuid4(),
-                        waste_type_id=waste_type.id,
-                        quantity=Decimal(str(10 + idx * 5 + waste_idx * 3)),
-                        unit="kg",
-                        educator_id=educator.id,
-                        driver_id=assigned_driver.id,
-                        organization_id=org.id,
-                        processor_organization_id=assigned_processor_org,
-                        pickup_address=f"ул. Медицинская, д. {10 + idx}",
-                        delivery_address="ул. Переработки, д. 1",
-                        status=WasteStatus.CREATED,
-                        created_at=get_utc_now(),
-                        updated_at=get_utc_now(),
-                    )
-                    db.add(batch)
-                    batches_count += 1
+                # Создаем партии для каждого типа отходов (все 6 типов)
+                for waste_idx, (code, waste_type) in enumerate(waste_types.items()):
+                    # Создаем 3 партии с разными статусами для каждого типа отходов
+                    statuses = [WasteStatus.CREATED, WasteStatus.IN_TRANSIT, WasteStatus.RECEIVED]
+                    for partition, status in enumerate(statuses):
+                        assigned_driver = users["driver_1"] if idx == 0 else users["driver_2"]
+                        assigned_processor_org = assigned_driver.organization_id
+                        batch = WasteBatch(
+                            id=uuid.uuid4(),
+                            waste_type_id=waste_type.id,
+                            quantity=Decimal(str(10 + idx * 5 + waste_idx * 3 + partition * 2)),
+                            unit="kg",
+                            educator_id=educator.id,
+                            driver_id=assigned_driver.id,
+                            organization_id=org.id,
+                            processor_organization_id=assigned_processor_org,
+                            pickup_address=f"ул. Медицинская, д. {10 + idx}",
+                            delivery_address="ул. Переработки, д. 1",
+                            status=status,
+                            created_at=get_utc_now(),
+                            updated_at=get_utc_now(),
+                        )
+                        db.add(batch)
+                        batches_count += 1
 
             await db.commit()
             print(f"✅ Создано {batches_count} партий отходов\n")

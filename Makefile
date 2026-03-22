@@ -8,7 +8,7 @@ NC := \033[0m
 # Variables
 PYTHON := python3
 PIP := pip3
-DOCKER_COMPOSE := docker-compose
+DOCKER_COMPOSE := docker compose
 APP_NAME := medwaste
 
 ## install: Install Python dependencies
