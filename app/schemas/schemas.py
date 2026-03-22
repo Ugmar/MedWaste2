@@ -139,7 +139,7 @@ class WasteTypeResponse(WasteTypeBase):
 class WasteBatchBase(BaseModel):
     """Базовая схема партии отходов."""
 
-    waste_type_id: str
+    waste_type_id: UUID
     driver_id: UUID
     processor_organization_id: UUID
     quantity: Decimal
