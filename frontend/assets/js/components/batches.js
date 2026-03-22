@@ -89,7 +89,6 @@ class BatchesComponent {
     async loadBatches(container) {
         try {
             const batches = await api.getBatches();
-            console.log('🔍 Batches loaded from API:', batches);
             const tbody = container.querySelector('tbody');
             
             if (batches.length === 0) {
@@ -99,13 +98,6 @@ class BatchesComponent {
 
             const self = this;
             tbody.innerHTML = batches.map((batch, idx) => {
-                console.log(`📦 Processing batch ${idx + 1}:`, {
-                    id: batch.id,
-                    waste_type: batch.waste_type,
-                    quantity: batch.quantity,
-                    unit: batch.unit,
-                    status: batch.status
-                });
                 return `
                 <tr>
                     <td><strong>#${String(idx + 1).padStart(3, '0')}</strong></td>
