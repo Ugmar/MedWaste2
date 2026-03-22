@@ -48,7 +48,7 @@ class OrganizationsComponent {
                                     <strong>${org.kpp || '-'}</strong>
                                 </div>
                             </div>
-                            <button class="btn btn-sm btn-primary mt-3 w-100">
+                            <button class="btn btn-sm btn-primary mt-3 w-100" onclick="window.location.hash='/organization/${org.id}'">
                                 <i class="bi bi-arrow-right"></i> Подробнее
                             </button>
                         </div>

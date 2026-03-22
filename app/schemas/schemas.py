@@ -163,6 +163,7 @@ class WasteBatchResponse(WasteBatchBase):
     status: WasteStatus
     created_at: datetime
     updated_at: datetime
+    waste_type: Optional['WasteTypeResponse'] = None
 
     class Config:
         from_attributes = True

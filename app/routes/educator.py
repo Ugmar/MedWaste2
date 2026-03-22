@@ -130,9 +130,15 @@ async def get_batch_details(
 ):
     """Получить детали партии отходов."""
     batch = await WasteBatchService.get_by_id(db, batch_id)
-    if not batch or batch.educator_id != current_educator.id:
+    if not batch:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Партия не найдена"
+        )
+    
+    # Админ может видеть любую партию, образователь - только свои
+    if current_educator.role != UserRole.ADMIN and batch.educator_id != current_educator.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен"
         )
     return batch
 

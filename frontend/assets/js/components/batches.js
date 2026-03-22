@@ -22,7 +22,8 @@ class BatchesComponent {
                                 <tr>
                                     <th>Номер</th>
                                     <th>Тип отходов</th>
-                                    <th>Вес (кг)</th>
+                                    <th>Класс</th>
+                                    <th>Количество</th>
                                     <th>Статус</th>
                                     <th>Дата создания</th>
                                     <th>Действия</th>
@@ -30,7 +31,7 @@ class BatchesComponent {
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center py-3">
+                                    <td colspan="7" class="text-center py-3">
                                         <div class="spinner-border" role="status">
                                             <span class="visually-hidden">Загрузка...</span>
                                         </div>
@@ -91,15 +92,16 @@ class BatchesComponent {
             const tbody = container.querySelector('tbody');
             
             if (batches.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">Партий не найдено</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Партий не найдено</td></tr>';
                 return;
             }
 
             tbody.innerHTML = batches.map((batch, idx) => `
                 <tr>
                     <td><strong>#${String(idx + 1).padStart(3, '0')}</strong></td>
-                    <td>${batch.waste_type_id}</td>
-                    <td>${batch.weight_kg} кг</td>
+                    <td>${batch.waste_type?.name || 'Не указано'}</td>
+                    <td><span class="badge bg-secondary">${batch.waste_type?.waste_class || '-'}</span></td>
+                    <td>${batch.quantity} ${batch.unit}</td>
                     <td>
                         <span class="badge bg-${this.getStatusColor(batch.status)}">
                             ${batch.status}
@@ -107,7 +109,7 @@ class BatchesComponent {
                     </td>
                     <td>${new Date(batch.created_at).toLocaleDateString('ru-RU')}</td>
                     <td>
-                        <button class="btn btn-sm btn-info"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-info" onclick="app.router.viewBatch('${batch.id}')"><i class="bi bi-eye"></i></button>
                         <button class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></button>
                     </td>
                 </tr>
@@ -115,7 +117,7 @@ class BatchesComponent {
         } catch (error) {
             console.error('Ошибка загрузки партий:', error);
             const tbody = container.querySelector('tbody');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-danger">Ошибка загрузки данных</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-danger"><i class="bi bi-exclamation-triangle"></i> Ошибка загрузки данных: ' + error.message + '</td></tr>';
         }
     }
 
