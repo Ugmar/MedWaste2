@@ -89,6 +89,7 @@ class BatchesComponent {
     async loadBatches(container) {
         try {
             const batches = await api.getBatches();
+            console.log('🔍 Batches loaded from API:', batches);
             const tbody = container.querySelector('tbody');
             
             if (batches.length === 0) {
@@ -96,14 +97,23 @@ class BatchesComponent {
                 return;
             }
 
-            tbody.innerHTML = batches.map((batch, idx) => `
+            const self = this;
+            tbody.innerHTML = batches.map((batch, idx) => {
+                console.log(`📦 Processing batch ${idx + 1}:`, {
+                    id: batch.id,
+                    waste_type: batch.waste_type,
+                    quantity: batch.quantity,
+                    unit: batch.unit,
+                    status: batch.status
+                });
+                return `
                 <tr>
                     <td><strong>#${String(idx + 1).padStart(3, '0')}</strong></td>
                     <td>${batch.waste_type?.name || 'Не указано'}</td>
                     <td><span class="badge bg-secondary">${batch.waste_type?.waste_class || '-'}</span></td>
                     <td>${batch.quantity} ${batch.unit}</td>
                     <td>
-                        <span class="badge bg-${this.getStatusColor(batch.status)}">
+                        <span class="badge bg-${self.getStatusColor(batch.status)}">
                             ${batch.status}
                         </span>
                     </td>
@@ -113,7 +123,7 @@ class BatchesComponent {
                         <button class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         } catch (error) {
             console.error('Ошибка загрузки партий:', error);
             const tbody = container.querySelector('tbody');
@@ -122,8 +132,15 @@ class BatchesComponent {
     }
 
     getStatusColor(status) {
-        const colors = { 'CREATED': 'info', 'IN_TRANSIT': 'warning', 'RECEIVED': 'success' };
-        return colors[status] || 'secondary';
+        const statusMap = {
+            'created': 'info',
+            'in_transit': 'warning', 
+            'received': 'success',
+            'CREATED': 'info',
+            'IN_TRANSIT': 'warning',
+            'RECEIVED': 'success'
+        };
+        return statusMap[status] || 'secondary';
     }
 
     async handleCreateBatch(e) {
