@@ -209,6 +209,7 @@ class WasteBatchService:
     ) -> list[WasteBatch]:
         result = await db.execute(
             select(WasteBatch)
+            .options(selectinload(WasteBatch.waste_type))
             .where(WasteBatch.educator_id == educator_id)
             .offset(skip)
             .limit(limit)
@@ -221,7 +222,11 @@ class WasteBatchService:
     ) -> list[WasteBatch]:
         result = await db.execute(
             select(WasteBatch)
-            .options(selectinload(WasteBatch.waste_type))
+            .options(
+                selectinload(WasteBatch.waste_type),
+                selectinload(WasteBatch.organization),
+                selectinload(WasteBatch.processor_organization)
+            )
             .offset(skip)
             .limit(limit)
         )
